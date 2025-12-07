@@ -399,8 +399,14 @@
                 <select id="grade-subject" required>
                   <option value="">Select subject (auto-filters JHS/SHS)</option>
                 </select>
-                <input id="grade-assessment" placeholder="Assessment Type" required />
+                <select id="grade-component" required>
+                  <option value="">Component</option>
+                  <option value="WW">Written Work (WW)</option>
+                  <option value="PT">Performance Task (PT)</option>
+                  <option value="QA">Quarterly Assessment (QA)</option>
+                </select>
             </div>
+            <input id="grade-activity" placeholder="Activity label (optional, e.g., Quiz 1)" />
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
                 <input id="grade-ww" type="number" step="0.01" min="0" max="100" placeholder="Written Works %" />
                 <input id="grade-pt" type="number" step="0.01" min="0" max="100" placeholder="Performance Tasks %" />
@@ -1464,16 +1470,20 @@
         const payload = {
           student_id: Number(document.getElementById("grade-student").value),
           subject: document.getElementById("grade-subject").value.trim(),
-          assessment: document.getElementById("grade-assessment").value.trim(),
+          assessment: (document.getElementById("grade-activity").value.trim() ||
+                       document.getElementById("grade-component").value ||
+                       "Assessment"),
           grade_value: Number(document.getElementById("grade-value").value),
           recorded_on: document.getElementById("grade-date").value || undefined,
           recorded_by: user?.id,
         };
         if (!payload.student_id) { err.textContent = "Select a student."; return; }
         if (!payload.subject) { err.textContent = "Select a subject."; return; }
+        if (!document.getElementById("grade-component").value) { err.textContent = "Select a component."; return; }
         try {
           await fetchJSON("/grades", { method: "POST", body: JSON.stringify(payload) });
           e.target.reset();
+          document.getElementById("grade-component").value = "";
           await refreshAll();
         } catch (ex) { err.textContent = ex.message; }
       });
