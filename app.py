@@ -67,7 +67,7 @@ def admin_init():
 
 # ORM models
 class User(Base):
-    __tablename__ = "Users"
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)  # demo: plaintext
@@ -79,7 +79,7 @@ class User(Base):
 
 
 class Student(Base):
-    __tablename__ = "Students"
+    __tablename__ = "students"
     id = Column(Integer, primary_key=True, autoincrement=True)
     student_number = Column(String(50), unique=True)
     first_name = Column(String(50), nullable=False)
@@ -96,49 +96,49 @@ class Student(Base):
 
 
 class Attendance(Base):
-    __tablename__ = "Attendance"
+    __tablename__ = "attendance"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    student_id = Column(Integer, ForeignKey("Students.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
     attendance_date = Column(Date, nullable=False)
     status = Column(String(20), nullable=False)
-    recorded_by = Column(Integer, ForeignKey("Users.id"))
+    recorded_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     student = relationship("Student", back_populates="attendance_records")
 
 
 class Grade(Base):
-    __tablename__ = "Grades"
+    __tablename__ = "grades"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    student_id = Column(Integer, ForeignKey("Students.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
     subject = Column(String(50), nullable=False)
     assessment = Column(String(100), nullable=False)
     grade_value = Column(DECIMAL(5, 2), nullable=False)
     recorded_on = Column(Date, nullable=False)
-    recorded_by = Column(Integer, ForeignKey("Users.id"))
+    recorded_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     student = relationship("Student", back_populates="grades")
 
 
 class BehaviorReport(Base):
-    __tablename__ = "BehaviorReports"
+    __tablename__ = "behaviorreports"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    student_id = Column(Integer, ForeignKey("Students.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
     incident_date = Column(Date, nullable=False)
     severity = Column(String(20), nullable=False)
     description = Column(String(500), nullable=False)
     action_taken = Column(String(200))
-    reported_by = Column(Integer, ForeignKey("Users.id"))
+    reported_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     student = relationship("Student", back_populates="behaviors")
 
 
 class CommunicationMessage(Base):
-    __tablename__ = "Communications"
+    __tablename__ = "communications"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    student_id = Column(Integer, ForeignKey("Students.id"))
+    student_id = Column(Integer, ForeignKey("students.id"))
     sender_name = Column(String(100), nullable=False)
     sender_role = Column(String(50), nullable=False)
     recipient = Column(String(100), nullable=True)
@@ -150,7 +150,7 @@ class CommunicationMessage(Base):
 
 
 class Subject(Base):
-    __tablename__ = "Subjects"
+    __tablename__ = "subjects"
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(150), nullable=False)
     category = Column(String(50), nullable=False)  # Core, Applied, Specialized, Institutional
@@ -187,7 +187,7 @@ if engine.dialect.name == "mssql":
                     """
                     SELECT 1 FROM sys.columns 
                     WHERE Name = N'student_number' 
-                      AND Object_ID = Object_ID(N'Students');
+                      AND Object_ID = Object_ID(N'students');
                     """
                 )
             ).first()
@@ -206,7 +206,7 @@ if engine.dialect.name == "mssql":
                     """
                     SELECT 1 FROM sys.columns 
                     WHERE Name = N'middle_name' 
-                      AND Object_ID = Object_ID(N'Students');
+                      AND Object_ID = Object_ID(N'students');
                     """
                 )
             ).first()
@@ -225,7 +225,7 @@ if engine.dialect.name == "mssql":
                     """
                     SELECT 1 FROM sys.columns 
                     WHERE Name = N'approved' 
-                      AND Object_ID = Object_ID(N'Users');
+                      AND Object_ID = Object_ID(N'users');
                     """
                 )
             ).first()
@@ -244,7 +244,7 @@ if engine.dialect.name == "mssql":
                     """
                     SELECT 1 FROM sys.columns 
                     WHERE Name = N'teacher_band' 
-                      AND Object_ID = Object_ID(N'Users');
+                      AND Object_ID = Object_ID(N'users');
                     """
                 )
             ).first()
