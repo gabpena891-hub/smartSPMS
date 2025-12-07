@@ -1288,7 +1288,7 @@
         teacherList.innerHTML = "";
         teachersCache.forEach(t => {
           const opt = document.createElement("option");
-          opt.value = t.full_name || t.username;
+          opt.value = `${t.full_name || t.username} (Teacher)`;
           teacherList.appendChild(opt);
         });
       }

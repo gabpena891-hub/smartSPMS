@@ -5,7 +5,7 @@ from datetime import date, datetime
 from flask import Flask, jsonify, request, send_from_directory, abort
 from flask_cors import CORS
 from sqlalchemy import (Column, Date, DateTime, DECIMAL, ForeignKey, Integer,
-                        String, Text, create_engine, func, text, case, and_, or_)
+                        String, Text, Float, create_engine, func, text, case, and_, or_)
 from sqlalchemy.orm import declarative_base, relationship, scoped_session, sessionmaker
 from sqlalchemy.exc import IntegrityError
 
@@ -201,6 +201,9 @@ class Subject(Base):
     track = Column(String(50))  # e.g., STEM, ABM, HUMSS, ICT, GAS, Institutional
     grade_min = Column(Integer)  # starting grade level (7-12)
     grade_max = Column(Integer)  # ending grade level (7-12)
+    weight_ww = Column(Float, nullable=True, server_default="0")
+    weight_pt = Column(Float, nullable=True, server_default="0")
+    weight_qa = Column(Float, nullable=True, server_default="0")
 
 
 # Utility helpers
