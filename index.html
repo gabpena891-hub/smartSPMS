@@ -45,11 +45,24 @@
       padding: 40px;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
       animation: floatUp 0.6s ease-out;
+      text-align: center; /* Ensures content is centered */
     }
     @keyframes floatUp {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    
+    /* Logo Styling */
+    .logo-container {
+      margin-bottom: 24px;
+      display: inline-flex;
+      padding: 12px;
+      background: rgba(99, 102, 241, 0.1);
+      border-radius: 16px;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+    }
+
     h1 { margin: 0 0 8px; font-size: 24px; font-weight: 700; letter-spacing: -0.025em; text-align: center; }
     p { margin: 0 0 32px; color: var(--muted); font-size: 14px; text-align: center; }
     
@@ -59,6 +72,7 @@
       color: var(--text); 
       font-size: 13px; 
       font-weight: 500; 
+      text-align: left; /* Keep labels left-aligned */
     }
     input {
       width: 100%;
@@ -134,6 +148,13 @@
 </head>
 <body>
   <div class="card">
+    <div class="logo-container">
+      <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 1L28.99 8.5V23.5L16 31L3.01 23.5V8.5L16 1Z" fill="rgba(99, 102, 241, 0.2)" stroke="#6366f1" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M8 16H12L15 11L19 21L22 16H26" stroke="#f8fafc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
     <h1 id="card-title">Welcome Back</h1>
     <p>Student Performance Monitoring System</p>
     <div id="error" class="error"></div>

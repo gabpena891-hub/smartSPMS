@@ -5,7 +5,7 @@ from datetime import date, datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from sqlalchemy import (Column, Date, DateTime, DECIMAL, ForeignKey, Integer,
-                        String, Text, create_engine, func, text, case)
+                        String, Text, create_engine, func, text, case, and_, or_)
 from sqlalchemy.orm import declarative_base, relationship, scoped_session, sessionmaker
 from sqlalchemy.exc import IntegrityError
 
@@ -118,6 +118,17 @@ class CommunicationMessage(Base):
     student = relationship("Student")
 
 
+class Subject(Base):
+    __tablename__ = "Subjects"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(150), nullable=False)
+    category = Column(String(50), nullable=False)  # Core, Applied, Specialized, Institutional
+    level_band = Column(String(10), nullable=False)  # JHS, SHS
+    track = Column(String(50))  # e.g., STEM, ABM, HUMSS, ICT, GAS, Institutional
+    grade_min = Column(Integer)  # starting grade level (7-12)
+    grade_max = Column(Integer)  # ending grade level (7-12)
+
+
 # Utility helpers
 def error_response(status: int, message: str, detail: str = None):
     # Include detail in error message to aid debugging during local development.
@@ -178,9 +189,23 @@ with engine.connect() as conn:
         pass
 
 
-# Create missing tables (Communications) without touching existing ones
+# Simple role check using header from frontend
+def require_admin():
+    role = request.headers.get("X-User-Role")
+    if role != "Admin":
+        return error_response(403, "Admin only")
+    return None
+
+
+# Create missing tables (Communications, Subjects) without touching existing ones
 try:
-    Base.metadata.create_all(bind=engine, tables=[CommunicationMessage.__table__])
+    Base.metadata.create_all(
+        bind=engine,
+        tables=[
+            CommunicationMessage.__table__,
+            Subject.__table__,
+        ],
+    )
 except Exception:
     # Non-fatal; will surface on requests if missing
     pass
@@ -844,6 +869,177 @@ def adviser_insights():
 
         return jsonify({"low_grades": low_grades, "attendance_risk": attendance_risk})
     except Exception as exc:
+        return error_response(500, "Unexpected error", str(exc))
+    finally:
+        session.close()
+
+
+@app.route("/api/subjects", methods=["GET"])
+def list_subjects():
+    level_band = request.args.get("level_band")
+    track = request.args.get("track")
+    category = request.args.get("category")
+    grade = request.args.get("grade", type=int)
+
+    session_or_none = get_session()
+    if isinstance(session_or_none, tuple):
+        session, exc = session_or_none
+        return error_response(500, "Database connection failed", str(exc))
+    session = session_or_none
+    try:
+        query = session.query(Subject)
+        if level_band:
+            query = query.filter(Subject.level_band == level_band)
+        if track:
+            query = query.filter(Subject.track == track)
+        if category:
+            query = query.filter(Subject.category == category)
+        if grade:
+            query = query.filter(
+                and_(
+                    or_(Subject.grade_min == None, Subject.grade_min <= grade),  # noqa: E711
+                    or_(Subject.grade_max == None, Subject.grade_max >= grade),  # noqa: E711
+                )
+            )
+        subjects = query.order_by(Subject.level_band, Subject.category, Subject.track, Subject.name).all()
+        return jsonify(
+            [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "category": s.category,
+                    "level_band": s.level_band,
+                    "track": s.track,
+                    "grade_min": s.grade_min,
+                    "grade_max": s.grade_max,
+                }
+                for s in subjects
+            ]
+        )
+    except Exception as exc:
+        return error_response(500, "Unexpected error", str(exc))
+    finally:
+        session.close()
+
+
+@app.route("/api/subjects", methods=["POST"])
+def create_subject():
+    admin_err = require_admin()
+    if admin_err:
+        return admin_err
+    data = request.get_json(silent=True) or {}
+    required = ["name", "category", "level_band"]
+    missing = [f for f in required if not data.get(f)]
+    if missing:
+        return error_response(400, f"Missing fields: {', '.join(missing)}")
+
+    level_band = data["level_band"]
+    if level_band not in ("JHS", "SHS"):
+        return error_response(400, "level_band must be JHS or SHS")
+    category = data["category"]
+    allowed_cats = ("Core", "Applied", "Specialized", "Institutional")
+    if category not in allowed_cats:
+        return error_response(400, f"category must be one of {', '.join(allowed_cats)}")
+
+    grade_min = data.get("grade_min")
+    grade_max = data.get("grade_max")
+    if grade_min is not None and (not isinstance(grade_min, int) or grade_min < 7 or grade_min > 12):
+        return error_response(400, "grade_min must be 7-12")
+    if grade_max is not None and (not isinstance(grade_max, int) or grade_max < 7 or grade_max > 12):
+        return error_response(400, "grade_max must be 7-12")
+    if grade_min and grade_max and grade_min > grade_max:
+        return error_response(400, "grade_min cannot exceed grade_max")
+
+    session_or_none = get_session()
+    if isinstance(session_or_none, tuple):
+        session, exc = session_or_none
+        return error_response(500, "Database connection failed", str(exc))
+    session = session_or_none
+    try:
+        subject = Subject(
+            name=data["name"].strip(),
+            category=category,
+            level_band=level_band,
+            track=data.get("track"),
+            grade_min=grade_min,
+            grade_max=grade_max,
+        )
+        session.add(subject)
+        session.commit()
+        return jsonify({"message": "Subject created", "id": subject.id}), 201
+    except Exception as exc:
+        session.rollback()
+        return error_response(500, "Unexpected error", str(exc))
+    finally:
+        session.close()
+
+
+@app.route("/api/subjects/<int:subject_id>", methods=["PUT"])
+def update_subject(subject_id: int):
+    admin_err = require_admin()
+    if admin_err:
+        return admin_err
+    data = request.get_json(silent=True) or {}
+
+    session_or_none = get_session()
+    if isinstance(session_or_none, tuple):
+        session, exc = session_or_none
+        return error_response(500, "Database connection failed", str(exc))
+    session = session_or_none
+    try:
+        subject = session.query(Subject).filter_by(id=subject_id).first()
+        if not subject:
+            return error_response(404, "Subject not found")
+
+        if "name" in data:
+            subject.name = data["name"].strip()
+        if "category" in data:
+            allowed_cats = ("Core", "Applied", "Specialized", "Institutional")
+            if data["category"] not in allowed_cats:
+                return error_response(400, f"category must be one of {', '.join(allowed_cats)}")
+            subject.category = data["category"]
+        if "level_band" in data:
+            if data["level_band"] not in ("JHS", "SHS"):
+                return error_response(400, "level_band must be JHS or SHS")
+            subject.level_band = data["level_band"]
+        if "track" in data:
+            subject.track = data["track"]
+        for fld in ("grade_min", "grade_max"):
+            if fld in data:
+                val = data[fld]
+                if val is not None and (not isinstance(val, int) or val < 7 or val > 12):
+                    return error_response(400, f"{fld} must be 7-12")
+                setattr(subject, fld, val)
+        if subject.grade_min and subject.grade_max and subject.grade_min > subject.grade_max:
+            return error_response(400, "grade_min cannot exceed grade_max")
+        session.commit()
+        return jsonify({"message": "Subject updated"})
+    except Exception as exc:
+        session.rollback()
+        return error_response(500, "Unexpected error", str(exc))
+    finally:
+        session.close()
+
+
+@app.route("/api/subjects/<int:subject_id>", methods=["DELETE"])
+def delete_subject(subject_id: int):
+    admin_err = require_admin()
+    if admin_err:
+        return admin_err
+    session_or_none = get_session()
+    if isinstance(session_or_none, tuple):
+        session, exc = session_or_none
+        return error_response(500, "Database connection failed", str(exc))
+    session = session_or_none
+    try:
+        subject = session.query(Subject).filter_by(id=subject_id).first()
+        if not subject:
+            return error_response(404, "Subject not found")
+        session.delete(subject)
+        session.commit()
+        return jsonify({"message": "Subject deleted"})
+    except Exception as exc:
+        session.rollback()
         return error_response(500, "Unexpected error", str(exc))
     finally:
         session.close()
