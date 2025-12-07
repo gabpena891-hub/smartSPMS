@@ -45,6 +45,7 @@ class User(Base):
     role = Column(String(20), nullable=False)
     full_name = Column(String(100), nullable=False)
     approved = Column(Integer, nullable=False, default=1)  # 1=approved, 0=pending
+    teacher_band = Column(String(10))  # Optional: JHS or SHS for teachers
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
@@ -169,7 +170,7 @@ with engine.connect() as conn:
         # If unable to alter, continue; missing column will surface in API use
         pass
 
-# Ensure middle_name and approved columns exist
+# Ensure middle_name, approved, and teacher_band columns exist
 with engine.connect() as conn:
     try:
         col_exists = conn.execute(
@@ -203,6 +204,25 @@ with engine.connect() as conn:
         if not col_exists:
             conn.execute(
                 text("ALTER TABLE Users ADD approved INT NOT NULL CONSTRAINT DF_Users_Approved DEFAULT 1; UPDATE Users SET approved = 1 WHERE approved IS NULL;")
+            )
+            conn.commit()
+    except Exception:
+        pass
+
+with engine.connect() as conn:
+    try:
+        col_exists = conn.execute(
+            text(
+                """
+                SELECT 1 FROM sys.columns 
+                WHERE Name = N'teacher_band' 
+                  AND Object_ID = Object_ID(N'Users');
+                """
+            )
+        ).first()
+        if not col_exists:
+            conn.execute(
+                text("ALTER TABLE Users ADD teacher_band NVARCHAR(10) NULL;")
             )
             conn.commit()
     except Exception:
@@ -262,6 +282,7 @@ def login():
                 "role": user.role,
                 "full_name": user.full_name,
                 "approved": bool(user.approved),
+                "teacher_band": user.teacher_band,
             }
         )
     except Exception as exc:
@@ -664,7 +685,7 @@ def list_users():
         return error_response(500, "Database connection failed", str(exc))
     session = session_or_none
     try:
-        query = session.query(User.id, User.username, User.full_name, User.role, User.approved)
+        query = session.query(User.id, User.username, User.full_name, User.role, User.approved, User.teacher_band)
         if role:
             query = query.filter(User.role == role)
         if pending_only:
@@ -678,6 +699,7 @@ def list_users():
                     "full_name": r.full_name,
                     "role": r.role,
                     "approved": bool(r.approved),
+                    "teacher_band": r.teacher_band,
                 }
                 for r in rows
             ]
@@ -713,6 +735,7 @@ def create_user():
             role=data["role"],
             full_name=data["full_name"],
             approved=1,
+            teacher_band=data.get("teacher_band"),
         )
         session.add(user)
         session.commit()
@@ -751,6 +774,8 @@ def update_user(user_id: int):
             user.password_hash = data["password"]  # plaintext for demo
         if "approved" in data:
             user.approved = 1 if data["approved"] else 0
+        if "teacher_band" in data:
+            user.teacher_band = data["teacher_band"]
         session.commit()
         return jsonify({"message": "User updated"})
     except Exception as exc:
@@ -804,6 +829,7 @@ def signup_teacher():
             role="Teacher",
             full_name=data["full_name"].strip(),
             approved=0,
+            teacher_band=data.get("teacher_band"),
         )
         session.add(user)
         session.commit()

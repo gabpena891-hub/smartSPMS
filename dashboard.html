@@ -469,6 +469,11 @@
       <div class="card">
         <div id="sheet-error" class="error"></div>
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:12px;">
+          <select id="sheet-band" style="display:none;">
+            <option value="">All (Admin)</option>
+            <option value="JHS">JHS</option>
+            <option value="SHS">SHS</option>
+          </select>
           <select id="sheet-subject">
             <option value="">Select subject</option>
           </select>
@@ -596,6 +601,11 @@
                 <option>Teacher</option>
                 <option>Parent</option>
             </select>
+            <select id="user-band">
+                <option value="">Department (Teacher only)</option>
+                <option value="JHS">JHS</option>
+                <option value="SHS">SHS</option>
+            </select>
             <input id="user-password" type="password" placeholder="Password" required />
             <button type="submit" style="grid-column: 1/-1">Create User</button>
             </form>
@@ -648,6 +658,7 @@
     let gradeSheetActivities = [];
     let gradesCache = [];
     let teacherBand = null;
+    let adminBandFilter = null;
 
     function classifyGradeLevel(gradeStr) {
       if (!gradeStr) return null;
@@ -671,7 +682,7 @@
       document.getElementById("user-name").textContent = parsed.full_name || parsed.username;
       currentUser = parsed;
       if (currentUser.role === "Teacher") {
-        teacherBand = localStorage.getItem("spms_teacher_band");
+        teacherBand = currentUser.teacher_band || localStorage.getItem("spms_teacher_band");
         if (!teacherBand || !["JHS", "SHS"].includes(teacherBand)) {
           const picked = window.prompt("Select your level (JHS or SHS):", teacherBand || "JHS");
           if (picked && ["JHS","SHS"].includes(picked.toUpperCase())) {
@@ -727,8 +738,9 @@
 
     async function loadStudents() {
       const students = await fetchJSON("/students");
-      studentsCache = (currentUser?.role === "Teacher" && teacherBand)
-        ? students.filter(s => classifyGradeLevel(s.grade_level) === teacherBand)
+      const bandFilter = (currentUser?.role === "Teacher") ? teacherBand : adminBandFilter;
+      studentsCache = bandFilter
+        ? students.filter(s => classifyGradeLevel(s.grade_level) === bandFilter)
         : students;
       const tbody = document.querySelector("#students-table tbody");
       const selectGrade = document.getElementById("grade-student");
@@ -774,8 +786,9 @@
 
     async function loadSubjects() {
       const subjects = await fetchJSON("/subjects");
-      subjectsCache = (currentUser?.role === "Teacher" && teacherBand)
-        ? subjects.filter(s => s.level_band === teacherBand)
+      const bandFilter = (currentUser?.role === "Teacher") ? teacherBand : adminBandFilter;
+      subjectsCache = bandFilter
+        ? subjects.filter(s => s.level_band === bandFilter)
         : subjects;
       const tbody = document.querySelector("#subjects-table tbody");
       if (!tbody) return;
@@ -1341,12 +1354,17 @@
         const tr = document.createElement("tr");
         const status = u.approved ? "Approved" : "Pending";
         tr.innerHTML = `<td>${u.username}</td><td>${u.full_name}</td><td>${u.role}</td><td>${status}</td>
-                        <td style="display:flex; gap:8px; align-items:center;">
+                        <td style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                           <select data-id="${u.id}" class="user-role-update" style="padding: 4px 8px; height: auto;">
                             <option ${u.role==="Admin"?"selected":""}>Admin</option>
                             <option ${u.role==="Teacher"?"selected":""}>Teacher</option>
                             <option ${u.role==="Parent"?"selected":""}>Parent</option>
                           </select>
+                          ${u.role==="Teacher" ? `<select data-id="${u.id}" class="user-band-update" style="padding: 4px 8px; height: auto;">
+                              <option value="">Band</option>
+                              <option value="JHS" ${u.teacher_band==="JHS"?"selected":""}>JHS</option>
+                              <option value="SHS" ${u.teacher_band==="SHS"?"selected":""}>SHS</option>
+                            </select>` : ""}
                           ${!u.approved && u.role==="Teacher" ? `<button class="user-approve" data-id="${u.id}" style="padding:6px 10px; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.2);">Approve</button>` : ""}
                           <button class="user-delete" data-id="${u.id}" style="padding:6px 10px; background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.2);">Delete</button>
                         </td>`;
@@ -1356,6 +1374,17 @@
         sel.onchange = async () => {
           try {
             await fetchJSON(`/users/${sel.dataset.id}`, { method: "PUT", body: JSON.stringify({ role: sel.value }) });
+          } catch (ex) {
+            alert(ex.message);
+            await loadUsers();
+          }
+        };
+      });
+      document.querySelectorAll(".user-band-update").forEach(sel => {
+        sel.onchange = async () => {
+          try {
+            await fetchJSON(`/users/${sel.dataset.id}`, { method: "PUT", body: JSON.stringify({ teacher_band: sel.value || null }) });
+            await loadUsers();
           } catch (ex) {
             alert(ex.message);
             await loadUsers();
@@ -1513,6 +1542,7 @@
           full_name: document.getElementById("user-fullname").value.trim(),
           role: document.getElementById("user-role").value,
           password: document.getElementById("user-password").value.trim(),
+        teacher_band: document.getElementById("user-band").value || undefined,
         };
         if (!payload.role) { err.textContent = "Select a role"; return; }
         try {
@@ -1578,6 +1608,14 @@
       if (reportBtn) {
         reportBtn.addEventListener("click", () => downloadStudentReport());
       }
+
+      const sheetBand = document.getElementById("sheet-band");
+      if (sheetBand) {
+        sheetBand.addEventListener("change", async () => {
+          adminBandFilter = sheetBand.value || null;
+          await refreshAll();
+        });
+      }
     }
 
     async function refreshAll() {
@@ -1629,6 +1667,14 @@
         // hide admin + subjects tab
         hiddenTabs.push("admin");
         hiddenTabs.push("subjects");
+      }
+      const sheetBand = document.getElementById("sheet-band");
+      if (sheetBand) {
+        sheetBand.style.display = role === "Admin" ? "block" : "none";
+        if (role !== "Admin") {
+          sheetBand.value = "";
+          adminBandFilter = null;
+        }
       }
       tabButtons.forEach(btn => {
         const tab = btn.dataset.tab;
