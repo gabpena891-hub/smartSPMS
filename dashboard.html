@@ -1031,9 +1031,12 @@
       } else {
         weightsLabel.textContent = "Weights: select a subject";
       }
-      const eligible = studentsCache.filter(s => classifyGradeLevel(s.grade_level) === band);
+      const bandFilter = (currentUser?.role === "Teacher") ? band : (band || null);
+      const eligible = bandFilter
+        ? studentsCache.filter(s => classifyGradeLevel(s.grade_level) === bandFilter)
+        : studentsCache;
       if (eligible.length === 0) {
-        sheetError.textContent = `No students for ${band || "this"} level.`;
+        sheetError.textContent = `No students for ${bandFilter || "this"} level.`;
         return;
       }
       sheetError.textContent = "";
@@ -1288,7 +1291,7 @@
         teacherList.innerHTML = "";
         teachersCache.forEach(t => {
           const opt = document.createElement("option");
-          opt.value = `${t.full_name || t.username} (Teacher)`;
+          opt.value = t.full_name || t.username;
           teacherList.appendChild(opt);
         });
       }
@@ -1432,6 +1435,12 @@
         const last5 = document.getElementById("student-number").value.trim();
         if (!/^\d{5}$/.test(last5)) { err.textContent = "Enter last 5 digits (numbers only)."; return; }
         const formattedNumber = `STU-${last5}`;
+        const homeroomRaw = document.getElementById("student-homeroom").value.trim();
+        const homeroomValid = teachersCache.some(t => (t.full_name || t.username) === homeroomRaw);
+        if (homeroomRaw && !homeroomValid) {
+          err.textContent = "Choose a homeroom teacher from the list.";
+          return;
+        }
         const payload = {
           student_number: formattedNumber,
           first_name: document.getElementById("student-first").value.trim(),
@@ -1439,7 +1448,7 @@
           last_name: document.getElementById("student-last").value.trim(),
           date_of_birth: document.getElementById("student-dob").value || undefined,
           grade_level: document.getElementById("student-grade").value || undefined,
-          homeroom_teacher: document.getElementById("student-homeroom").value || undefined,
+          homeroom_teacher: homeroomRaw || undefined,
         };
         try {
           await fetchJSON("/students", { method: "POST", body: JSON.stringify(payload) });
@@ -1472,6 +1481,7 @@
       document.getElementById("attendance-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const err = document.getElementById("attendance-error");
+        err.style.color = "#fca5a5";
         err.textContent = "";
         const payload = {
           student_id: Number(document.getElementById("attendance-student").value),
@@ -1480,9 +1490,13 @@
           recorded_by: user?.id,
         };
         if (!payload.student_id) { err.textContent = "Select a student."; return; }
+        if (!payload.attendance_date) { err.textContent = "Pick a date."; return; }
+        if (!payload.status) { err.textContent = "Select a status."; return; }
         try {
           await fetchJSON("/attendance", { method: "POST", body: JSON.stringify(payload) });
           e.target.reset();
+          err.style.color = "#34d399";
+          err.textContent = "Attendance recorded.";
           await refreshAll();
         } catch (ex) { err.textContent = ex.message; }
       });
