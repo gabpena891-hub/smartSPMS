@@ -231,6 +231,37 @@ def admin_seed_subjects():
         session.close()
 
 
+@app.route("/api/admin/patch-subject-weights", methods=["POST", "GET"])
+def admin_patch_subject_weights():
+    """Add weight_ww/weight_pt/weight_qa columns if missing (for Postgres without shell)."""
+    token = os.environ.get("ADMIN_INIT_TOKEN")
+    if token:
+        provided = request.headers.get("X-Admin-Init-Token") or request.args.get("token")
+        if provided != token:
+            return error_response(403, "Forbidden")
+
+    ddl = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='weight_ww') THEN
+            ALTER TABLE subjects ADD COLUMN weight_ww FLOAT DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='weight_pt') THEN
+            ALTER TABLE subjects ADD COLUMN weight_pt FLOAT DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='weight_qa') THEN
+            ALTER TABLE subjects ADD COLUMN weight_qa FLOAT DEFAULT 0;
+        END IF;
+    END $$;
+    """
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(ddl))
+        return jsonify({"message": "Subject weight columns ensured"})
+    except Exception as exc:
+        return error_response(500, "Patch failed", str(exc))
+
+
 # ORM models
 class User(Base):
     __tablename__ = "users"
