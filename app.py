@@ -178,84 +178,83 @@ def get_session():
         return None, exc
 
 
-# Ensure student_number column exists (lightweight safety for existing DB)
-with engine.connect() as conn:
-    try:
-        col_exists = conn.execute(
-            text(
-                """
-                SELECT 1 FROM sys.columns 
-                WHERE Name = N'student_number' 
-                  AND Object_ID = Object_ID(N'Students');
-                """
-            )
-        ).first()
-        if not col_exists:
-            conn.execute(
-                text("ALTER TABLE Students ADD student_number NVARCHAR(50) NULL UNIQUE;")
-            )
-            conn.commit()
-    except Exception:
-        # If unable to alter, continue; missing column will surface in API use
-        pass
+# Legacy MSSQL safety migrations (skip on Postgres/sqlite)
+if engine.dialect.name == "mssql":
+    with engine.connect() as conn:
+        try:
+            col_exists = conn.execute(
+                text(
+                    """
+                    SELECT 1 FROM sys.columns 
+                    WHERE Name = N'student_number' 
+                      AND Object_ID = Object_ID(N'Students');
+                    """
+                )
+            ).first()
+            if not col_exists:
+                conn.execute(
+                    text("ALTER TABLE Students ADD student_number NVARCHAR(50) NULL UNIQUE;")
+                )
+                conn.commit()
+        except Exception:
+            pass
 
-# Ensure middle_name, approved, and teacher_band columns exist
-with engine.connect() as conn:
-    try:
-        col_exists = conn.execute(
-            text(
-                """
-                SELECT 1 FROM sys.columns 
-                WHERE Name = N'middle_name' 
-                  AND Object_ID = Object_ID(N'Students');
-                """
-            )
-        ).first()
-        if not col_exists:
-            conn.execute(
-                text("ALTER TABLE Students ADD middle_name NVARCHAR(1) NULL;")
-            )
-            conn.commit()
-    except Exception:
-        pass
+    with engine.connect() as conn:
+        try:
+            col_exists = conn.execute(
+                text(
+                    """
+                    SELECT 1 FROM sys.columns 
+                    WHERE Name = N'middle_name' 
+                      AND Object_ID = Object_ID(N'Students');
+                    """
+                )
+            ).first()
+            if not col_exists:
+                conn.execute(
+                    text("ALTER TABLE Students ADD middle_name NVARCHAR(1) NULL;")
+                )
+                conn.commit()
+        except Exception:
+            pass
 
-with engine.connect() as conn:
-    try:
-        col_exists = conn.execute(
-            text(
-                """
-                SELECT 1 FROM sys.columns 
-                WHERE Name = N'approved' 
-                  AND Object_ID = Object_ID(N'Users');
-                """
-            )
-        ).first()
-        if not col_exists:
-            conn.execute(
-                text("ALTER TABLE Users ADD approved INT NOT NULL CONSTRAINT DF_Users_Approved DEFAULT 1; UPDATE Users SET approved = 1 WHERE approved IS NULL;")
-            )
-            conn.commit()
-    except Exception:
-        pass
+    with engine.connect() as conn:
+        try:
+            col_exists = conn.execute(
+                text(
+                    """
+                    SELECT 1 FROM sys.columns 
+                    WHERE Name = N'approved' 
+                      AND Object_ID = Object_ID(N'Users');
+                    """
+                )
+            ).first()
+            if not col_exists:
+                conn.execute(
+                    text("ALTER TABLE Users ADD approved INT NOT NULL CONSTRAINT DF_Users_Approved DEFAULT 1; UPDATE Users SET approved = 1 WHERE approved IS NULL;")
+                )
+                conn.commit()
+        except Exception:
+            pass
 
-with engine.connect() as conn:
-    try:
-        col_exists = conn.execute(
-            text(
-                """
-                SELECT 1 FROM sys.columns 
-                WHERE Name = N'teacher_band' 
-                  AND Object_ID = Object_ID(N'Users');
-                """
-            )
-        ).first()
-        if not col_exists:
-            conn.execute(
-                text("ALTER TABLE Users ADD teacher_band NVARCHAR(10) NULL;")
-            )
-            conn.commit()
-    except Exception:
-        pass
+    with engine.connect() as conn:
+        try:
+            col_exists = conn.execute(
+                text(
+                    """
+                    SELECT 1 FROM sys.columns 
+                    WHERE Name = N'teacher_band' 
+                      AND Object_ID = Object_ID(N'Users');
+                    """
+                )
+            ).first()
+            if not col_exists:
+                conn.execute(
+                    text("ALTER TABLE Users ADD teacher_band NVARCHAR(10) NULL;")
+                )
+                conn.commit()
+        except Exception:
+            pass
 
 
 # Simple role check using header from frontend
