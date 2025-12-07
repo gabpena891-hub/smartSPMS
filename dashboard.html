@@ -475,7 +475,7 @@
     </section>
 
     <section class="tab" id="tab-grade-sheet">
-      <h3 class="section-title" style="margin-top:0;">Grade Sheet (per Subject)</h3>
+      <h3 class="section-title" style="margin-top:0;">Grade Sheet (Class Record)</h3>
       <div class="card">
         <div id="sheet-error" class="error"></div>
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:12px;">
@@ -487,14 +487,8 @@
           <select id="sheet-subject">
             <option value="">Select subject</option>
           </select>
-          <input id="sheet-assessment" placeholder="Activity label (e.g., Quiz 1)" />
-          <select id="sheet-type">
-            <option value="WW">Written Work (WW)</option>
-            <option value="PT">Performance Task (PT)</option>
-            <option value="QA">Quarterly Exam (QA)</option>
-          </select>
-          <button id="sheet-add-activity" type="button">Add Activity</button>
-          <input id="sheet-date" type="date" />
+          <button id="sheet-add-activity" type="button" style="background: rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4);">Add Column</button>
+          <button id="sheet-save" type="button" style="background: var(--accent); border:none;">Save Sheet</button>
         </div>
         <div id="sheet-weights" style="font-size:12px; color: var(--muted); margin-bottom: 8px;">Weights: -</div>
         <div style="max-height: 420px; overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
@@ -503,11 +497,7 @@
             <tbody></tbody>
           </table>
         </div>
-        <div style="margin-top:12px; display:flex; gap:12px; flex-wrap: wrap;">
-          <button id="sheet-save">Save All</button>
-          <button id="sheet-clear" type="button" style="background: rgba(255,255,255,0.08);">Clear Scores</button>
-          <button id="sheet-clear-activities" type="button" style="background: rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.25); color:#f87171;">Clear Activities</button>
-        </div>
+        <div id="sheet-status" style="font-size:12px; color: var(--muted); margin-top:8px;"></div>
       </div>
     </section>
 
@@ -669,6 +659,9 @@
     let gradesCache = [];
     let teacherBand = null;
     let adminBandFilter = null;
+    let gradeSheetSubject = null;
+    let gradeSheetRowsData = {}; // {studentId: {activityId: raw}}
+    let gradeSheetSubjectWeights = { ww: 0.3, pt: 0.5, qa: 0.2 };
 
     function classifyGradeLevel(gradeStr) {
       if (!gradeStr) return null;
@@ -995,48 +988,66 @@
     }
 
     function addGradeSheetActivity() {
-      const label = document.getElementById("sheet-assessment").value.trim();
-      const type = document.getElementById("sheet-type").value;
-      if (!label) { document.getElementById("sheet-error").textContent = "Enter activity label."; return; }
-      gradeSheetActivities.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(), label, type });
-      document.getElementById("sheet-assessment").value = "";
-      buildGradeSheet();
+      const name = prompt("Activity name (e.g., Quiz 1):", "");
+      if (!name) return;
+      const max = Number(prompt("Max score:", "20"));
+      if (!max || max <= 0) { alert("Max score must be > 0"); return; }
+      const comp = prompt("Component (WW/PT/QA):", "WW");
+      const compNorm = (comp || "").toUpperCase();
+      if (!["WW","PT","QA"].includes(compNorm)) { alert("Component must be WW, PT, or QA"); return; }
+      const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();
+      gradeSheetActivities.push({ id, label: name, type: compNorm, max_score: max });
+      rebuildGradeSheetFromData();
     }
 
-    function clearGradeSheetActivities() {
-      gradeSheetActivities = [];
-      buildGradeSheet();
-    }
-
-    function buildGradeSheet() {
-      const subjectName = document.getElementById("sheet-subject").value;
+    function rebuildGradeSheetFromData() {
+      const subjectName = gradeSheetSubject || document.getElementById("sheet-subject").value;
       const subjectMeta = subjectsCache.find(s => s.name === subjectName);
       const band = subjectMeta?.level_band;
+      gradeSheetSubject = subjectName;
       const sheetError = document.getElementById("sheet-error");
       const tbody = document.querySelector("#sheet-table tbody");
       const theadRow = document.getElementById("sheet-header-row");
       const weightsLabel = document.getElementById("sheet-weights");
       tbody.innerHTML = "";
-      // rebuild header
       theadRow.innerHTML = "<th>Student</th>";
+
+      // infer weights
+      const weights = subjectMeta ? {
+        ww: Number(subjectMeta.weight_ww || 0),
+        pt: Number(subjectMeta.weight_pt || 0),
+        qa: Number(subjectMeta.weight_qa || 0),
+      } : gradeSheetSubjectWeights;
+      if (!weights || (weights.ww + weights.pt + weights.qa) === 0) {
+        weightsLabel.textContent = "Weights: not set on subject";
+      } else {
+        weightsLabel.textContent = `Weights: WW ${weights.ww*100}% , PT ${weights.pt*100}% , QA ${weights.qa*100}%`;
+      }
+
+      // build activities from existing grades for this subject
+      if (subjectName) {
+        const existing = gradesCache.filter(g => g.subject === subjectName);
+        existing.forEach(g => {
+          if (!gradeSheetActivities.find(a => a.label === g.assessment)) {
+            gradeSheetActivities.push({
+              id: g.assessment,
+              label: g.assessment,
+              type: g.component || "WW",
+              max_score: g.max_score || 0,
+            });
+          }
+        });
+      }
+
+      // header columns
       gradeSheetActivities.forEach(act => {
         const th = document.createElement("th");
-        th.textContent = `${act.label} (${act.type})`;
+        th.textContent = `${act.label} (${act.type}, Max ${act.max_score || 0})`;
         theadRow.appendChild(th);
       });
       theadRow.innerHTML += "<th>Final</th>";
 
-      gradeSheetRows = [];
-      if (!subjectName) {
-        weightsLabel.textContent = "Weights: select a subject";
-        return;
-      }
-      const weights = getWeightsForSubject(subjectName, subjectMeta, band);
-      if (weights) {
-        weightsLabel.textContent = `Weights: WW ${weights.ww}%, PT ${weights.pt}%, QA ${weights.qa}%`;
-      } else {
-        weightsLabel.textContent = "Weights: select a subject";
-      }
+      // students eligible
       const bandFilter = (currentUser?.role === "Teacher") ? band : (band || null);
       const eligible = bandFilter
         ? studentsCache.filter(s => classifyGradeLevel(s.grade_level) === bandFilter)
@@ -1046,14 +1057,22 @@
         return;
       }
       sheetError.textContent = "";
+
+      gradeSheetRows = [];
+      gradeSheetRowsData = {};
       eligible.forEach(s => {
         const row = { student_id: s.id, scores: {} };
         gradeSheetRows.push(row);
+        gradeSheetRowsData[s.id] = {};
         const tr = document.createElement("tr");
         let cells = `<td>${s.first_name} ${s.last_name}${s.grade_level ? " (G" + s.grade_level + ")" : ""}</td>`;
         gradeSheetActivities.forEach(act => {
-          const existing = row.scores[act.id] || "";
-          cells += `<td><input data-id="${s.id}" data-act="${act.id}" type="number" step="0.01" min="0" max="100" style="width:100%;" value="${existing}"></td>`;
+          // prefill from existing grades
+          const existing = gradesCache.find(g => g.student_id === s.id && g.subject === subjectName && g.assessment === act.label);
+          const val = existing ? existing.raw_score : "";
+          row.scores[act.id] = val;
+          gradeSheetRowsData[s.id][act.id] = val;
+          cells += `<td><input data-id="${s.id}" data-act="${act.id}" type="number" step="0.01" min="0" style="width:100%;" value="${val}"></td>`;
         });
         cells += `<td><input data-id="${s.id}" data-field="final" type="number" step="0.01" min="0" max="100" style="width:100%;" readonly></td>`;
         tr.innerHTML = cells;
@@ -1067,6 +1086,7 @@
           const row = gradeSheetRows.find(r => r.student_id === sid);
           if (!row) return;
           row.scores[act] = inp.value;
+          gradeSheetRowsData[sid][act] = inp.value;
           computeSheetFinals();
         });
       });
@@ -1103,7 +1123,6 @@
     }
 
     function resetGradeSheetInputs() {
-      document.getElementById("sheet-date").value = "";
       gradeSheetRows.forEach(r => { r.scores = {}; r.final = ""; });
       document.querySelectorAll("#sheet-table tbody input").forEach(inp => {
         inp.value = "";
@@ -1111,9 +1130,8 @@
       computeSheetFinals();
     }
 
-    async function saveGradeSheet() {
+    async function saveGradeSheetBulk() {
       const subjectName = document.getElementById("sheet-subject").value;
-      const dateVal = document.getElementById("sheet-date").value || undefined;
       const sheetError = document.getElementById("sheet-error");
       sheetError.textContent = "";
       if (!subjectName) { sheetError.textContent = "Select a subject."; return; }
@@ -1127,19 +1145,19 @@
               student_id: r.student_id,
               subject: subjectName,
               assessment: act.label,
-              grade_value: Number(val),
-              recorded_on: dateVal,
               component: act.type,
+              raw_score: Number(val),
+              max_score: Number(act.max_score || 0),
+              recorded_on: new Date().toISOString().slice(0,10),
+              recorded_by: currentUser?.id,
             });
           }
         });
       });
       if (payloads.length === 0) { sheetError.textContent = "Enter at least one score."; return; }
       try {
-        for (const p of payloads) {
-          await fetchJSON("/grades", { method: "POST", body: JSON.stringify(p) });
-        }
-        resetGradeSheetInputs();
+        await fetchJSON("/grades/bulk", { method: "POST", body: JSON.stringify(payloads) });
+        document.getElementById("sheet-status").textContent = "Saved.";
         await refreshAll();
       } catch (ex) {
         sheetError.textContent = ex.message;
@@ -1631,11 +1649,12 @@
 
       const sheetSubject = document.getElementById("sheet-subject");
       if (sheetSubject) {
-        sheetSubject.addEventListener("change", () => buildGradeSheet());
+        sheetSubject.addEventListener("change", () => {
+          gradeSheetSubject = sheetSubject.value;
+          rebuildGradeSheetFromData();
+        });
         document.getElementById("sheet-add-activity").addEventListener("click", () => addGradeSheetActivity());
-        document.getElementById("sheet-clear").addEventListener("click", () => resetGradeSheetInputs());
-        document.getElementById("sheet-clear-activities").addEventListener("click", () => clearGradeSheetActivities());
-        document.getElementById("sheet-save").addEventListener("click", () => saveGradeSheet());
+        document.getElementById("sheet-save").addEventListener("click", () => saveGradeSheetBulk());
       }
 
       const reportBtn = document.getElementById("grade-report-btn");

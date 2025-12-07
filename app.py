@@ -262,6 +262,37 @@ def admin_patch_subject_weights():
         return error_response(500, "Patch failed", str(exc))
 
 
+@app.route("/api/admin/patch-grades-schema", methods=["POST", "GET"])
+def admin_patch_grades_schema():
+    """Add raw_score, max_score, component columns if missing."""
+    token = os.environ.get("ADMIN_INIT_TOKEN")
+    if token:
+        provided = request.headers.get("X-Admin-Init-Token") or request.args.get("token")
+        if provided != token:
+            return error_response(403, "Forbidden")
+
+    ddl = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='grades' AND column_name='raw_score') THEN
+            ALTER TABLE grades ADD COLUMN raw_score INTEGER;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='grades' AND column_name='max_score') THEN
+            ALTER TABLE grades ADD COLUMN max_score INTEGER;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='grades' AND column_name='component') THEN
+            ALTER TABLE grades ADD COLUMN component VARCHAR(5);
+        END IF;
+    END $$;
+    """
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(ddl))
+        return jsonify({"message": "Grades schema patched"})
+    except Exception as exc:
+        return error_response(500, "Patch failed", str(exc))
+
+
 # ORM models
 class User(Base):
     __tablename__ = "users"
@@ -310,6 +341,9 @@ class Grade(Base):
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
     subject = Column(String(50), nullable=False)
     assessment = Column(String(100), nullable=False)
+    component = Column(String(5))  # WW, PT, QA
+    raw_score = Column(Integer)
+    max_score = Column(Integer)
     grade_value = Column(DECIMAL(5, 2), nullable=False)
     recorded_on = Column(Date, nullable=False)
     recorded_by = Column(Integer, ForeignKey("users.id"))
@@ -711,6 +745,9 @@ def add_grade():
             student_id=data["student_id"],
             subject=data["subject"],
             assessment=data["assessment"],
+            component=data.get("component"),
+            raw_score=data.get("raw_score"),
+            max_score=data.get("max_score"),
             grade_value=data["grade_value"],
             recorded_on=recorded_date,
             recorded_by=data.get("recorded_by"),
@@ -725,9 +762,77 @@ def add_grade():
         session.close()
 
 
+@app.route("/api/grades/bulk", methods=["POST"])
+def bulk_save_grades():
+    data = request.get_json(silent=True) or []
+    if not isinstance(data, list):
+        return error_response(400, "Payload must be a list")
+
+    session_or_none = get_session()
+    if isinstance(session_or_none, tuple):
+        session, exc = session_or_none
+        return error_response(500, "Database connection failed", str(exc))
+    session = session_or_none
+    try:
+        count_upsert = 0
+        for item in data:
+            required = ["student_id", "subject", "assessment", "component", "raw_score", "max_score"]
+            missing = [f for f in required if item.get(f) is None]
+            if missing:
+                session.rollback()
+                return error_response(400, f"Missing fields: {', '.join(missing)}")
+            raw = int(item.get("raw_score", 0))
+            maxs = int(item.get("max_score", 0))
+            grade_val = float(raw) / maxs * 100 if maxs > 0 else 0.0
+            rec_on = item.get("recorded_on")
+            try:
+                recorded_date = date.fromisoformat(rec_on) if rec_on else date.today()
+            except ValueError:
+                session.rollback()
+                return error_response(400, "recorded_on must be YYYY-MM-DD")
+            existing = (
+                session.query(Grade)
+                .filter(
+                    Grade.student_id == item["student_id"],
+                    Grade.subject == item["subject"],
+                    Grade.assessment == item["assessment"],
+                )
+                .first()
+            )
+            if existing:
+                existing.component = item.get("component")
+                existing.raw_score = raw
+                existing.max_score = maxs
+                existing.grade_value = grade_val
+                existing.recorded_on = recorded_date
+                existing.recorded_by = item.get("recorded_by")
+            else:
+                g = Grade(
+                    student_id=item["student_id"],
+                    subject=item["subject"],
+                    assessment=item["assessment"],
+                    component=item.get("component"),
+                    raw_score=raw,
+                    max_score=maxs,
+                    grade_value=grade_val,
+                    recorded_on=recorded_date,
+                    recorded_by=item.get("recorded_by"),
+                )
+                session.add(g)
+            count_upsert += 1
+        session.commit()
+        return jsonify({"message": "Bulk grades saved", "count": count_upsert})
+    except Exception as exc:
+        session.rollback()
+        return error_response(500, "Unexpected error", str(exc))
+    finally:
+        session.close()
+
+
 @app.route("/api/grades", methods=["GET"])
 def list_grades():
     student_id = request.args.get("student_id", type=int)
+    subject = request.args.get("subject")
     session_or_none = get_session()
     if isinstance(session_or_none, tuple):
         session, exc = session_or_none
@@ -738,6 +843,8 @@ def list_grades():
         query = session.query(Grade)
         if student_id:
             query = query.filter(Grade.student_id == student_id)
+        if subject:
+            query = query.filter(Grade.subject == subject)
         if band:
             # Filter by student band
             grades = []
@@ -754,6 +861,9 @@ def list_grades():
                     "student_id": g.student_id,
                     "subject": g.subject,
                     "assessment": g.assessment,
+                    "component": g.component,
+                    "raw_score": g.raw_score,
+                    "max_score": g.max_score,
                     "grade_value": float(g.grade_value),
                     "recorded_on": g.recorded_on.isoformat(),
                     "recorded_by": g.recorded_by,
@@ -779,7 +889,7 @@ def update_grade(grade_id: int):
         grade = session.query(Grade).filter_by(id=grade_id).first()
         if not grade:
             return error_response(404, "Grade not found")
-        for field in ["subject", "assessment", "grade_value", "recorded_by"]:
+        for field in ["subject", "assessment", "grade_value", "recorded_by", "component", "raw_score", "max_score"]:
             if field in data:
                 setattr(grade, field, data[field])
         if "recorded_on" in data:
@@ -1279,6 +1389,9 @@ def list_subjects():
                     "track": s.track,
                     "grade_min": s.grade_min,
                     "grade_max": s.grade_max,
+                    "weight_ww": s.weight_ww,
+                    "weight_pt": s.weight_pt,
+                    "weight_qa": s.weight_qa,
                 }
                 for s in subjects
             ]
