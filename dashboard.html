@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Performance | Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --sidebar: #1e293b;
+      --card: #1e293b;
+      --border: rgba(255, 255, 255, 0.08);
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --muted: #94a3b8;
+      --text: #f1f5f9;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; outline: none; }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    body {
+      margin: 0;
+      font-family: "Inter", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Sidebar Styling */
+    aside {
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      padding: 32px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .brand { 
+      font-size: 20px; 
+      font-weight: 700; 
+      letter-spacing: -0.025em; 
+      color: white; 
+      margin-bottom: 20px;
+      padding-left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand::before {
+      content: '';
+      display: block;
+      width: 12px;
+      height: 12px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent);
+    }
+    nav { display: flex; flex-direction: column; gap: 4px; }
+    nav button {
+      width: 100%;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      text-align: left;
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    nav button:hover {
+      background: rgba(255,255,255,0.03);
+      color: white;
+    }
+    nav button.active {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    nav button[onclick="logout()"] {
+      margin-top: auto;
+      color: #fca5a5;
+    }
+    nav button[onclick="logout()"]:hover {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+    }
+
+    /* Main Content */
+    main { 
+      padding: 40px; 
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    
+    header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 32px; 
+    }
+    #user-name {
+      font-size: 24px;
+      margin-top: 4px;
+      color: white;
+    }
+
+    /* Cards */
+    .cards { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 32px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+      border-color: rgba(255,255,255,0.15);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .card h3 { 
+      margin: 0 0 12px; 
+      font-size: 13px; 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px; 
+      color: var(--muted); 
+      font-weight: 600;
+    }
+    .card .value { font-size: 32px; font-weight: 700; color: white; letter-spacing: -0.03em; }
+
+    /* Grid Layouts */
+    .grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); margin-bottom: 32px; }
+    
+    /* Charts */
+    canvas { 
+      background: rgba(15, 23, 42, 0.5); 
+      border-radius: 12px; 
+      padding: 16px; 
+      width: 100% !important;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    th, td { 
+      padding: 16px 20px; 
+      text-align: left; 
+      font-size: 14px; 
+      border-bottom: 1px solid var(--border); 
+    }
+    th { 
+      background: rgba(255,255,255,0.02); 
+      font-weight: 600; 
+      color: var(--muted); 
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    
+    /* Forms */
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+      background: rgba(30, 41, 59, 0.5);
+      padding: 24px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+    }
+    
+    input, select, textarea {
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: white;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    textarea { min-height: 100px; resize: vertical; }
+    
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      padding: 12px 20px;
+      font-size: 14px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    
+    /* Specific Button Styles */
+    .delete-student {
+      background: rgba(239, 68, 68, 0.15) !important;
+      color: #f87171 !important;
+      border: 1px solid rgba(239, 68, 68, 0.2) !important;
+      box-shadow: none !important;
+    }
+    .delete-student:hover {
+      background: rgba(239, 68, 68, 0.25) !important;
+    }
+
+    #trend-refresh {
+        width: auto;
+        padding: 0 24px;
+    }
+
+    /* Utilities */
+    .error { color: #fca5a5; margin-top: 8px; font-size: 13px; font-weight: 500; }
+    .tab { display: none; animation: fadeIn 0.3s ease; }
+    .tab.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .section-title { margin: 32px 0 16px; color: white; font-size: 18px; font-weight: 600; }
+    .flex { display: flex; gap: 16px; align-items: center; }
+    
+    .pill-input { border-radius: 50px; }
+    .suggestions {
+      margin-top: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-height: 200px;
+      overflow: auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .suggestions div {
+      padding: 10px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .suggestions div:hover { background: rgba(99, 102, 241, 0.1); color: var(--accent); }
+
+     .badge {
+       display: inline-block;
+       min-width: 20px;
+       padding: 2px 8px;
+       border-radius: 999px;
+       background: #f97316;
+       color: white;
+       font-size: 11px;
+       font-weight: 700;
+       vertical-align: middle;
+       margin-left: 8px;
+     }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      body { grid-template-columns: 1fr; }
+      aside { 
+        height: auto; 
+        flex-direction: row; 
+        overflow-x: auto; 
+        position: relative; 
+        padding: 16px;
+        align-items: center;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .brand { margin-bottom: 0; margin-right: 20px; font-size: 16px; }
+      nav { flex-direction: row; }
+      nav button { white-space: nowrap; padding: 8px 12px; font-size: 13px; }
+      nav button[onclick="logout()"] { margin-left: auto; margin-top: 0; }
+      main { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <div class="brand">SPMS Dashboard</div>
+    <nav>
+      <button class="active" data-tab="overview">Overview</button>
+      <button data-tab="students">Students</button>
+      <button data-tab="logs">Grades & Attendance</button>
+      <button data-tab="trends">Trends</button>
+      <button data-tab="comms">Communications <span id="comms-badge" class="badge" style="display:none;">0</span></button>
+      <button data-tab="admin">Administration</button>
+      <button onclick="logout()">Logout</button>
+    </nav>
+  </aside>
+  <main>
+    <header>
+      <div>
+        <div style="color: var(--muted); font-size: 13px; font-weight: 500;">Welcome back</div>
+        <div id="user-name" style="font-weight: 700;">Loading...</div>
+      </div>
+    </header>
+
+    <section class="tab active" id="tab-overview">
+      <div class="cards">
+        <div class="card"><h3>Students</h3><div class="value" id="total-students">-</div></div>
+        <div class="card"><h3>Grades Recorded</h3><div class="value" id="total-grades">-</div></div>
+        <div class="card"><h3>Behavior Reports</h3><div class="value" id="total-behaviors">-</div></div>
+        <div class="card"><h3>Communications</h3><div class="value" id="total-comms">-</div></div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h3 style="margin-bottom: 20px;">Attendance Rates</h3>
+          <canvas id="attendanceChart" height="240"></canvas>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom: 20px;">Average Grades per Subject</h3>
+          <canvas id="gradesChart" height="240"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-students">
+      <h3 class="section-title" style="margin-top:0;">Manage Students</h3>
+      <div id="student-error" class="error"></div>
+      <form id="student-form">
+        <input id="student-number" placeholder="Last 5 digits (e.g., 01234)" maxlength="5" pattern="[0-9]{5}" inputmode="numeric" title="Enter exactly 5 digits" required />
+        <input id="student-first" placeholder="First name" required />
+        <input id="student-middle" placeholder="Middle initial" maxlength="1" />
+        <input id="student-last" placeholder="Last name" required />
+        <input id="student-dob" type="date" />
+        <input id="student-grade" placeholder="Grade level" />
+        <input id="student-homeroom" placeholder="Homeroom teacher" list="teacher-options" />
+        <button type="submit">Add Student</button>
+      </form>
+      <datalist id="teacher-options"></datalist>
+      <p class="section-title">Directory</p>
+        <table id="students-table">
+          <thead><tr><th>Student #</th><th>Name</th><th>Grade</th><th>Homeroom</th><th>Birthdate (DOB)</th><th>Action</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="tab" id="tab-logs">
+      <div class="grid">
+        <div class="card">
+          <h3>Record New Grade</h3>
+          <div id="grade-error" class="error"></div>
+          <form id="grade-form" style="background: transparent; border: none; padding: 0; grid-template-columns: 1fr;">
+            <select id="grade-student" required></select>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <input id="grade-subject" placeholder="Subject" required />
+                <input id="grade-assessment" placeholder="Assessment Type" required />
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <input id="grade-value" type="number" step="0.01" min="0" max="100" placeholder="Grade %" required />
+                <input id="grade-date" type="date" />
+            </div>
+            <button type="submit">Submit Grade</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Record Attendance</h3>
+          <div id="attendance-error" class="error"></div>
+          <form id="attendance-form" style="background: transparent; border: none; padding: 0; grid-template-columns: 1fr;">
+            <select id="attendance-student" required></select>
+            <input id="attendance-date" type="date" required />
+            <select id="attendance-status" required>
+              <option value="">Select Status</option>
+              <option>Present</option><option>Absent</option><option>Tardy</option>
+            </select>
+            <button type="submit">Submit Attendance</button>
+          </form>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h3>Recent Grades</h3>
+          <table id="grades-table">
+            <thead><tr><th>Student</th><th>Subject</th><th>Assessment</th><th>Grade</th><th>Date</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Recent Attendance</h3>
+          <table id="attendance-table">
+            <thead><tr><th>Student</th><th>Date</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-trends">
+      <div class="card">
+          <div class="flex" style="margin-bottom: 20px;">
+            <select id="trend-student" style="max-width: 300px;"></select>
+            <button id="trend-refresh">Refresh Trends</button>
+          </div>
+          <h3>Grade Trend (by assessment date)</h3>
+          <canvas id="trendChart" height="120" style="max-height: 400px;"></canvas>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-comms">
+      <h3 class="section-title" style="margin-top:0;">Parent-Teacher Communication</h3>
+       <div id="comms-alert" class="error" style="display:none; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #bbf7d0;">
+         New messages received. Open Communications to view.
+       </div>
+      <div id="comm-error" class="error"></div>
+      <form id="comm-form">
+        <div class="flex" style="flex-wrap: wrap; gap:16px; grid-column: span 2;">
+          <div style="flex:1; min-width:200px;">
+            <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px;">Student Reference</label>
+            <input id="comm-student-search" class="pill-input" placeholder="Search student name..." autocomplete="off" />
+            <div id="comm-student-suggestions" class="suggestions"></div>
+            <input type="hidden" id="comm-student-id" />
+          </div>
+          <div style="flex:1; min-width:200px;">
+            <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px;">Recipient</label>
+            <input id="comm-teacher-search" class="pill-input" placeholder="Search teacher..." autocomplete="off" />
+            <div id="comm-teacher-suggestions" class="suggestions"></div>
+            <input type="hidden" id="comm-teacher-name" />
+          </div>
+        </div>
+        
+        <input id="comm-sender" placeholder="Your name" readonly style="background: rgba(255,255,255,0.02); color: var(--muted);" />
+        <input id="comm-subject" placeholder="Subject" required />
+        <textarea id="comm-body" placeholder="Type your message here..." required style="grid-column: 1 / -1;"></textarea>
+        <button type="submit" style="grid-column: 1 / -1;">Send / Log Message</button>
+      </form>
+      <p class="section-title">Message History</p>
+      <table id="comm-table">
+        <thead><tr><th>Subject</th><th>From</th><th>To</th><th>Student</th><th>Date</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="tab" id="tab-admin">
+      <h3 class="section-title" style="margin-top:0;">Adviser Dashboard</h3>
+      <div class="cards">
+        <div class="card"><h3>Total Students</h3><div class="value" id="admin-total-students">-</div></div>
+        <div class="card"><h3>Total Grades</h3><div class="value" id="admin-total-grades">-</div></div>
+        <div class="card"><h3>Attendance Logs</h3><div class="value" id="admin-total-att">-</div></div>
+        <div class="card"><h3>Comms Logged</h3><div class="value" id="admin-total-comms">-</div></div>
+      </div>
+      
+      <div class="grid">
+        <div class="card">
+            <h3>User Management</h3>
+            <div id="user-error" class="error"></div>
+            <form id="user-form" style="background: transparent; border: none; padding: 0; margin-bottom: 20px;">
+            <input id="user-username" placeholder="Username" required />
+            <input id="user-fullname" placeholder="Full name" required />
+            <select id="user-role" required>
+                <option value="">Select Role</option>
+                <option>Admin</option>
+                <option>Teacher</option>
+                <option>Parent</option>
+            </select>
+            <input id="user-password" type="password" placeholder="Password" required />
+            <button type="submit" style="grid-column: 1/-1">Create User</button>
+            </form>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table id="users-table">
+                <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+            <div class="card">
+            <h3 style="color: var(--danger);">Academic Risk (Lowest Avg)</h3>
+            <table>
+                <thead><tr><th>Student</th><th>Average %</th></tr></thead>
+                <tbody id="admin-low-grades"></tbody>
+            </table>
+            </div>
+            <div class="card">
+            <h3 style="color: var(--danger);">Attendance Risk</h3>
+            <table>
+                <thead><tr><th>Student</th><th>Present %</th><th>Logs</th></tr></thead>
+                <tbody id="admin-att-risk"></tbody>
+            </table>
+            </div>
+             <div class="card" style="background: rgba(99, 102, 241, 0.1); border-color: var(--accent);">
+                <h3 style="color: var(--accent);">Suggested Focus</h3>
+                <ul id="admin-focus" style="color: var(--text); padding-left: 20px; line-height: 1.6;">
+                    <li>Monitor attendance outliers</li>
+                    <li>Track grade trends per subject</li>
+                    <li>Review communications for escalations</li>
+                </ul>
+            </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:5000/api";
+    let attendanceChart, gradesChart, trendChart;
+    let studentsCache = [];
+    let teachersCache = [];
+    let currentUser = null;
+    let usersCache = [];
+
+    function logout() {
+      localStorage.removeItem("spms_user");
+      window.location.href = "index.html";
+    }
+
+    function ensureUser() {
+      const user = localStorage.getItem("spms_user");
+      if (!user) { window.location.href = "index.html"; return null; }
+      const parsed = JSON.parse(user);
+      document.getElementById("user-name").textContent = parsed.full_name || parsed.username;
+      currentUser = parsed;
+      return parsed;
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll("nav button").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === tab);
+      });
+      document.querySelectorAll(".tab").forEach(sec => {
+        sec.classList.toggle("active", sec.id === `tab-${tab}`);
+      });
+      if (tab === "comms") {
+        loadComms(true);
+      }
+    }
+
+    async function fetchJSON(path, options = {}) {
+      const res = await fetch(`${API_BASE}${path}`, {
+        headers: { "Content-Type": "application/json" },
+        ...options,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Request failed");
+      return data;
+    }
+
+    async function loadDashboard() {
+      const stats = await fetchJSON("/dashboard-stats");
+      const totals = stats.totals;
+      document.getElementById("total-students").textContent = totals.students;
+      document.getElementById("total-grades").textContent = totals.grades;
+      document.getElementById("total-behaviors").textContent = totals.behaviors;
+      document.getElementById("total-comms").textContent = totals.communications;
+      document.getElementById("admin-total-students").textContent = totals.students;
+      document.getElementById("admin-total-grades").textContent = totals.grades;
+      document.getElementById("admin-total-att").textContent = stats.attendance.Present + stats.attendance.Absent + stats.attendance.Tardy;
+      document.getElementById("admin-total-comms").textContent = totals.communications;
+      renderAttendance(stats.attendance);
+      renderGrades(stats.average_grades);
+    }
+
+    async function loadStudents() {
+      const students = await fetchJSON("/students");
+      studentsCache = students;
+      const tbody = document.querySelector("#students-table tbody");
+      const selectGrade = document.getElementById("grade-student");
+      const selectAtt = document.getElementById("attendance-student");
+      const selectTrend = document.getElementById("trend-student");
+      [selectGrade, selectAtt, selectTrend].forEach(sel => sel.innerHTML = "");
+      const defaultOption = (text) => { const o = document.createElement("option"); o.value = ""; o.textContent = text; o.disabled = true; o.selected = true; return o; };
+      selectGrade.appendChild(defaultOption("Select student"));
+      selectAtt.appendChild(defaultOption("Select student"));
+      selectTrend.appendChild(defaultOption("Select student"));
+      tbody.innerHTML = "";
+      students.forEach((s) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${s.student_number || "-"}</td>
+                        <td>${s.first_name} ${s.middle_name ? s.middle_name + ". " : ""}${s.last_name}</td>
+                        <td>${s.grade_level || "-"}</td>
+                        <td>${s.homeroom_teacher || "-"}</td>
+                        <td>${s.date_of_birth ? `DOB: ${s.date_of_birth}` : "-"}</td>
+                        <td><button data-id="${s.id}" class="delete-student" style="padding:6px 10px;">Delete</button></td>`;
+        tbody.appendChild(tr);
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = `${s.first_name} ${s.last_name}`;
+        [selectGrade, selectAtt, selectTrend].forEach(sel => sel.appendChild(opt.cloneNode(true)));
+      });
+      // wire delete buttons
+      document.querySelectorAll(".delete-student").forEach(btn => {
+        btn.onclick = async () => {
+          if (!confirm("Delete this student (and related records)?")) return;
+          await fetchJSON(`/students/${btn.dataset.id}`, { method: "DELETE" });
+          await refreshAll();
+        };
+      });
+    }
+
+    async function loadGradesTable() {
+      const grades = await fetchJSON("/grades");
+      const tbody = document.querySelector("#grades-table tbody");
+      tbody.innerHTML = "";
+      grades.slice(0, 25).forEach(g => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${g.student_id}</td><td>${g.subject}</td><td>${g.assessment}</td><td>${g.grade_value}</td><td>${g.recorded_on}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadAttendanceTable() {
+      const records = await fetchJSON("/attendance");
+      const tbody = document.querySelector("#attendance-table tbody");
+      tbody.innerHTML = "";
+      records.slice(0, 25).forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${r.student_id}</td><td>${r.attendance_date}</td><td>${r.status}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderAttendance(attendance) {
+      const ctx = document.getElementById("attendanceChart").getContext("2d");
+      const data = [attendance.Present || 0, attendance.Absent || 0, attendance.Tardy || 0];
+      if (attendanceChart) attendanceChart.destroy();
+      attendanceChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Present", "Absent", "Tardy"],
+          datasets: [{ 
+              data, 
+              backgroundColor: ["#10b981", "#ef4444", "#f59e0b"],
+              borderWidth: 0
+            }],
+        },
+        options: {
+            plugins: {
+                legend: { labels: { color: '#94a3b8' } }
+            }
+        }
+      });
+    }
+
+    function renderGrades(averages) {
+      const ctx = document.getElementById("gradesChart").getContext("2d");
+      const labels = averages.map(a => a.subject);
+      const data = averages.map(a => a.average.toFixed(2));
+      if (gradesChart) gradesChart.destroy();
+      gradesChart = new Chart(ctx, {
+        type: "bar",
+        data: { labels, datasets: [{ label: "Average %", data, backgroundColor: "#6366f1", borderRadius: 4 }] },
+        options: { 
+            scales: { 
+                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: { legend: { display: false } }
+        },
+      });
+    }
+
+    async function renderTrendChart(studentId) {
+      if (!studentId) return;
+      const grades = await fetchJSON(`/grades?student_id=${studentId}`);
+      const sorted = grades.sort((a,b) => new Date(a.recorded_on) - new Date(b.recorded_on));
+      const labels = sorted.map(g => g.recorded_on);
+      const data = sorted.map(g => g.grade_value);
+      const ctx = document.getElementById("trendChart").getContext("2d");
+      if (trendChart) trendChart.destroy();
+      trendChart = new Chart(ctx, {
+        type: "line",
+        data: { labels, datasets: [{ label: "Grade %", data, borderColor: "#6366f1", backgroundColor: "rgba(99, 102, 241, 0.2)", fill: true, tension: 0.3 }] },
+        options: { 
+            scales: { 
+                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: { legend: { display: false } }
+        },
+      });
+    }
+
+    function updateCommsNotifications(filtered) {
+      if (!currentUser || currentUser.role !== "Teacher") {
+        document.getElementById("comms-badge").style.display = "none";
+        const alert = document.getElementById("comms-alert");
+        if (alert) alert.style.display = "none";
+        return;
+      }
+      const badge = document.getElementById("comms-badge");
+      const alert = document.getElementById("comms-alert");
+      const lastSeen = localStorage.getItem("spms_comms_seen_ts") || "1970-01-01T00:00:00Z";
+      const unseen = filtered.filter(c => new Date(c.created_at) > new Date(lastSeen));
+      if (unseen.length > 0) {
+        badge.textContent = unseen.length;
+        badge.style.display = "inline-block";
+        if (alert) alert.style.display = "block";
+      } else {
+        badge.style.display = "none";
+        if (alert) alert.style.display = "none";
+      }
+    }
+
+    async function loadComms(markSeen = false) {
+      const comms = await fetchJSON("/communications");
+      const filtered = (currentUser && currentUser.role === "Teacher")
+        ? comms.filter(c => {
+            const r = (c.recipient || "").toLowerCase();
+            const name = (currentUser.full_name || currentUser.username || "").toLowerCase();
+            return r && r === name;
+          }).sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+        : comms.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+      const tbody = document.querySelector("#comm-table tbody");
+      tbody.innerHTML = "";
+      filtered.slice(0, 25).forEach(c => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${c.subject}</td><td>${c.sender_name} <span style="font-size:11px; opacity:0.7;">(${c.sender_role})</span></td><td>${c.recipient || "-"}</td><td>${c.student_name || "-"}</td><td>${c.created_at}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      // notifications
+      if (filtered.length > 0) {
+        const latestTs = filtered[0].created_at;
+        if (markSeen) {
+          localStorage.setItem("spms_comms_seen_ts", latestTs);
+        }
+      }
+      updateCommsNotifications(filtered);
+    }
+
+    async function loadTeachers() {
+      teachersCache = await fetchJSON("/users?role=Teacher");
+      const teacherList = document.getElementById("teacher-options");
+      if (teacherList) {
+        teacherList.innerHTML = "";
+        teachersCache.forEach(t => {
+          const opt = document.createElement("option");
+          opt.value = t.full_name || t.username;
+          teacherList.appendChild(opt);
+        });
+      }
+    }
+
+    function renderSuggestions(list, targetEl, onPick) {
+      targetEl.innerHTML = "";
+      list.slice(0, 5).forEach(item => {
+        const div = document.createElement("div");
+        div.style.padding = "6px 10px";
+        div.style.cursor = "pointer";
+        div.textContent = item.label;
+        div.onclick = () => onPick(item);
+        targetEl.appendChild(div);
+      });
+    }
+
+    function attachSuggestField(inputEl, sugEl, lookupFn, onPick) {
+      let hideTimeout;
+      const hide = () => { sugEl.innerHTML = ""; };
+      inputEl.addEventListener("input", () => {
+        const q = inputEl.value.toLowerCase().trim();
+        if (!q) { hide(); return; }
+        const matches = lookupFn(q);
+        renderSuggestions(matches, sugEl, (item) => {
+          onPick(item);
+          hide();
+        });
+      });
+      inputEl.addEventListener("focus", () => {
+        const q = inputEl.value.toLowerCase().trim();
+        if (!q) { hide(); return; }
+        const matches = lookupFn(q);
+        renderSuggestions(matches, sugEl, (item) => {
+          onPick(item);
+          hide();
+        });
+      });
+      inputEl.addEventListener("blur", () => {
+        hideTimeout = setTimeout(hide, 120);
+      });
+      sugEl.addEventListener("mouseenter", () => clearTimeout(hideTimeout));
+      sugEl.addEventListener("mouseleave", () => hideTimeout = setTimeout(hide, 80));
+    }
+
+    async function loadAdviserInsights() {
+      const data = await fetchJSON("/adviser-insights");
+      const low = document.getElementById("admin-low-grades");
+      const att = document.getElementById("admin-att-risk");
+      low.innerHTML = data.low_grades.length
+        ? data.low_grades.map(l => `<tr><td>${l.student_name}</td><td>${l.average.toFixed(2)}</td></tr>`).join("")
+        : "<tr><td colspan='2'>No data</td></tr>";
+      att.innerHTML = data.attendance_risk.length
+        ? data.attendance_risk.map(a => `<tr><td>${a.student_name}</td><td>${a.present_rate}%</td><td>${a.total_logs}</td></tr>`).join("")
+        : "<tr><td colspan='3'>No data</td></tr>";
+    }
+
+    async function loadUsers() {
+      usersCache = await fetchJSON("/users");
+      const tbody = document.querySelector("#users-table tbody");
+      tbody.innerHTML = "";
+      usersCache.forEach(u => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${u.username}</td><td>${u.full_name}</td><td>${u.role}</td>
+                        <td style="display:flex; gap:8px; align-items:center;">
+                          <select data-id="${u.id}" class="user-role-update" style="padding: 4px 8px; height: auto;">
+                            <option ${u.role==="Admin"?"selected":""}>Admin</option>
+                            <option ${u.role==="Teacher"?"selected":""}>Teacher</option>
+                            <option ${u.role==="Parent"?"selected":""}>Parent</option>
+                          </select>
+                          <button class="user-delete" data-id="${u.id}" style="padding:6px 10px; background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.2);">Delete</button>
+                        </td>`;
+        tbody.appendChild(tr);
+      });
+      document.querySelectorAll(".user-role-update").forEach(sel => {
+        sel.onchange = async () => {
+          try {
+            await fetchJSON(`/users/${sel.dataset.id}`, { method: "PUT", body: JSON.stringify({ role: sel.value }) });
+          } catch (ex) {
+            alert(ex.message);
+            await loadUsers();
+          }
+        };
+      });
+      document.querySelectorAll(".user-delete").forEach(btn => {
+        btn.onclick = async () => {
+          if (!confirm("Delete this user?")) return;
+          try {
+            await fetchJSON(`/users/${btn.dataset.id}`, { method: "DELETE" });
+            await loadUsers();
+          } catch (ex) {
+            alert(ex.message);
+          }
+        };
+      });
+    }
+
+    function wireForms(user) {
+      document.getElementById("student-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = document.getElementById("student-error");
+        err.textContent = "";
+        const last5 = document.getElementById("student-number").value.trim();
+        if (!/^\d{5}$/.test(last5)) { err.textContent = "Enter last 5 digits (numbers only)."; return; }
+        const formattedNumber = `STU-${last5}`;
+        const payload = {
+          student_number: formattedNumber,
+          first_name: document.getElementById("student-first").value.trim(),
+          middle_name: document.getElementById("student-middle").value.trim() || undefined,
+          last_name: document.getElementById("student-last").value.trim(),
+          date_of_birth: document.getElementById("student-dob").value || undefined,
+          grade_level: document.getElementById("student-grade").value || undefined,
+          homeroom_teacher: document.getElementById("student-homeroom").value || undefined,
+        };
+        try {
+          await fetchJSON("/students", { method: "POST", body: JSON.stringify(payload) });
+          e.target.reset();
+          await refreshAll();
+        } catch (ex) { err.textContent = ex.message; }
+      });
+
+      document.getElementById("grade-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = document.getElementById("grade-error");
+        err.textContent = "";
+        const payload = {
+          student_id: Number(document.getElementById("grade-student").value),
+          subject: document.getElementById("grade-subject").value.trim(),
+          assessment: document.getElementById("grade-assessment").value.trim(),
+          grade_value: Number(document.getElementById("grade-value").value),
+          recorded_on: document.getElementById("grade-date").value || undefined,
+          recorded_by: user?.id,
+        };
+        if (!payload.student_id) { err.textContent = "Select a student."; return; }
+        try {
+          await fetchJSON("/grades", { method: "POST", body: JSON.stringify(payload) });
+          e.target.reset();
+          await refreshAll();
+        } catch (ex) { err.textContent = ex.message; }
+      });
+
+      document.getElementById("attendance-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = document.getElementById("attendance-error");
+        err.textContent = "";
+        const payload = {
+          student_id: Number(document.getElementById("attendance-student").value),
+          attendance_date: document.getElementById("attendance-date").value,
+          status: document.getElementById("attendance-status").value,
+          recorded_by: user?.id,
+        };
+        if (!payload.student_id) { err.textContent = "Select a student."; return; }
+        try {
+          await fetchJSON("/attendance", { method: "POST", body: JSON.stringify(payload) });
+          e.target.reset();
+          await refreshAll();
+        } catch (ex) { err.textContent = ex.message; }
+      });
+
+      // Communications form
+      const studentSearch = document.getElementById("comm-student-search");
+      const studentSug = document.getElementById("comm-student-suggestions");
+      const studentIdHidden = document.getElementById("comm-student-id");
+      const teacherSearch = document.getElementById("comm-teacher-search");
+      const teacherSug = document.getElementById("comm-teacher-suggestions");
+      const teacherNameHidden = document.getElementById("comm-teacher-name");
+
+      attachSuggestField(
+        studentSearch,
+        studentSug,
+        (q) => studentsCache
+          .filter(s => (`${s.first_name} ${s.last_name}`).toLowerCase().includes(q))
+          .map(s => ({ id: s.id, label: `${s.first_name} ${s.last_name}` })),
+        (item) => {
+          studentSearch.value = item.label;
+          studentIdHidden.value = item.id;
+        }
+      );
+
+      attachSuggestField(
+        teacherSearch,
+        teacherSug,
+        (q) => teachersCache
+          .filter(t => (t.full_name || t.username).toLowerCase().includes(q))
+          .map(t => ({ id: t.id, label: t.full_name || t.username })),
+        (item) => {
+          teacherSearch.value = item.label;
+          teacherNameHidden.value = item.label;
+        }
+      );
+
+      document.getElementById("comm-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = document.getElementById("comm-error"); err.textContent = "";
+        const payload = {
+          student_id: studentIdHidden.value || undefined,
+          sender_name: user.full_name || user.username,
+          sender_role: user.role,
+          recipient: teacherNameHidden.value || teacherSearch.value.trim() || undefined,
+          subject: document.getElementById("comm-subject").value.trim(),
+          message_body: document.getElementById("comm-body").value.trim(),
+        };
+        try {
+          await fetchJSON("/communications", { method: "POST", body: JSON.stringify(payload) });
+          e.target.reset();
+          studentIdHidden.value = "";
+          teacherNameHidden.value = "";
+          studentSearch.value = "";
+          teacherSearch.value = "";
+          await loadComms();
+          await loadDashboard();
+          localStorage.setItem("spms_comms_seen_ts", new Date().toISOString());
+          updateCommsNotifications([]);
+        } catch (ex) { err.textContent = ex.message; }
+      });
+
+      document.getElementById("user-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = document.getElementById("user-error"); err.textContent = "";
+        const payload = {
+          username: document.getElementById("user-username").value.trim(),
+          full_name: document.getElementById("user-fullname").value.trim(),
+          role: document.getElementById("user-role").value,
+          password: document.getElementById("user-password").value.trim(),
+        };
+        if (!payload.role) { err.textContent = "Select a role"; return; }
+        try {
+          await fetchJSON("/users", { method: "POST", body: JSON.stringify(payload) });
+          e.target.reset();
+          await loadUsers();
+        } catch (ex) { err.textContent = ex.message; }
+      });
+
+      document.getElementById("trend-refresh").addEventListener("click", async () => {
+        const studentId = document.getElementById("trend-student").value;
+        await renderTrendChart(studentId);
+      });
+    }
+
+    async function refreshAll() {
+      await Promise.all([
+        loadDashboard(),
+        loadStudents(),
+        loadGradesTable(),
+        loadAttendanceTable(),
+        loadTeachers(),
+        loadComms(),
+        loadAdviserInsights(),
+        loadUsers(),
+      ]);
+    }
+
+    function applyRoleVisibility(role) {
+      const tabButtons = document.querySelectorAll("nav button[data-tab]");
+      const hiddenTabs = [];
+      // Default: Admin sees all, Teacher sees all but admin insights; Parent read-only.
+      if (role === "Parent") {
+        hiddenTabs.push("students", "logs", "admin"); // no CRUD
+        // disable forms
+        document.querySelectorAll("form button").forEach(b => {
+          if (!b.closest("#comm-form")) b.disabled = true;
+        });
+      }
+      if (role === "Teacher") {
+        // hide admin tab
+        hiddenTabs.push("admin");
+      }
+      tabButtons.forEach(btn => {
+        const tab = btn.dataset.tab;
+        if (hiddenTabs.includes(tab)) {
+          btn.style.display = "none";
+          if (btn.classList.contains("active")) switchTab("overview");
+        }
+      });
+      // Also hide tab sections
+      hiddenTabs.forEach(tab => {
+        const section = document.getElementById(`tab-${tab}`);
+        if (section) section.style.display = "none";
+      });
+      // For parents, make read-only tables still visible
+      if (role === "Parent") {
+        // allow switching only overview, trends, comms
+        tabButtons.forEach(btn => {
+          if (!["overview", "trends", "comms"].includes(btn.dataset.tab)) {
+            btn.style.display = "none";
+          }
+        });
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const user = ensureUser();
+      if (!user) return;
+
+      applyRoleVisibility(user.role);
+
+      document.querySelectorAll("nav button[data-tab]").forEach(btn => {
+        btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+      });
+
+      wireForms(user);
+      await refreshAll();
+
+      // Poll for new comms for teachers
+      if (user.role === "Teacher") {
+        setInterval(() => loadComms(false), 30000);
+      }
+    });
+  </script>
+</body>
+</html>

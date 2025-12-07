@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Performance | Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --border: rgba(255, 255, 255, 0.1);
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", sans-serif;
+      background-color: var(--bg);
+      /* Modern mesh gradient background */
+      background-image: 
+        radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+        radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+        radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 400px;
+      padding: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      animation: floatUp 0.6s ease-out;
+    }
+    @keyframes floatUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h1 { margin: 0 0 8px; font-size: 24px; font-weight: 700; letter-spacing: -0.025em; text-align: center; }
+    p { margin: 0 0 32px; color: var(--muted); font-size: 14px; text-align: center; }
+    
+    label { 
+      display: block; 
+      margin-bottom: 8px; 
+      color: var(--text); 
+      font-size: 13px; 
+      font-weight: 500; 
+    }
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 14px;
+      margin-bottom: 20px;
+      outline: none;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    input:focus {
+      border-color: var(--accent);
+      background: rgba(15, 23, 42, 0.8);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover { 
+      background: var(--accent-hover); 
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); 
+    }
+    button:active { transform: translateY(0); }
+    
+    .separator {
+      margin: 24px 0; 
+      color: var(--muted); 
+      text-align: center; 
+      font-size: 12px;
+      position: relative;
+    }
+    .separator::before, .separator::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 35%;
+      height: 1px;
+      background: var(--border);
+    }
+    .separator::before { left: 0; }
+    .separator::after { right: 0; }
+
+    .toggle-container { text-align: center; font-size: 14px; }
+    a { color: var(--accent); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+    a:hover { color: #818cf8; }
+
+    .error { 
+      color: #fca5a5; 
+      background: rgba(127, 29, 29, 0.2); 
+      border: 1px solid rgba(248, 113, 113, 0.2); 
+      padding: 12px; 
+      border-radius: 10px; 
+      margin-bottom: 20px; 
+      font-size: 13px;
+      display: none; 
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 id="card-title">Welcome Back</h1>
+    <p>Student Performance Monitoring System</p>
+    <div id="error" class="error"></div>
+    
+    <form id="login-form">
+      <label for="username">Username</label>
+      <input id="username" name="username" placeholder="Enter your username" required />
+      
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" placeholder="••••••••" required />
+      
+      <button type="submit">Sign In</button>
+    </form>
+
+    <div class="separator">OR</div>
+
+    <form id="signup-form" style="display:none;">
+      <label for="su-fullname">Full Name</label>
+      <input id="su-fullname" name="fullname" placeholder="John Doe" required />
+      
+      <label for="su-username">Username</label>
+      <input id="su-username" name="username" placeholder="Choose a username" required />
+      
+      <label for="su-password">Password</label>
+      <input id="su-password" name="password" type="password" placeholder="Create a password" required />
+      
+      <label for="su-studentnum">Child's Student Number</label>
+      <input id="su-studentnum" name="student_number" placeholder="Last 5 digits (e.g. 01234)" maxlength="5" pattern="\d{5}" inputmode="numeric" required />
+      
+      <button type="submit">Create Account</button>
+    </form>
+
+    <div class="toggle-container">
+      <a href="#" id="toggle-link">Create a parent account</a>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:5000/api";
+    const form = document.getElementById("login-form");
+    const errorBox = document.getElementById("error");
+    const signupForm = document.getElementById("signup-form");
+    const toggleLink = document.getElementById("toggle-link");
+    const cardTitle = document.getElementById("card-title");
+    let showSignup = false;
+
+    toggleLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      showSignup = !showSignup;
+      signupForm.style.display = showSignup ? "block" : "none";
+      form.style.display = showSignup ? "none" : "block";
+      toggleLink.textContent = showSignup ? "Back to login" : "Create a parent account";
+      cardTitle.textContent = showSignup ? "Parent Sign Up" : "Welcome Back";
+      errorBox.style.display = "none";
+      // Hide/Show separator based on view
+      document.querySelector('.separator').style.display = showSignup ? 'none' : 'block';
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorBox.style.display = "none";
+      const payload = {
+        username: form.username.value.trim(),
+        password: form.password.value.trim(),
+      };
+      try {
+        const res = await fetch(`${API_BASE}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
+        localStorage.setItem("spms_user", JSON.stringify(data));
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.style.display = "block";
+      }
+    });
+
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorBox.style.display = "none";
+      const raw = document.getElementById("su-studentnum").value.trim();
+      if (!/^\d{5}$/.test(raw)) {
+        errorBox.textContent = "Enter last 5 digits (numbers only).";
+        errorBox.style.display = "block";
+        return;
+      }
+      const formattedNumber = `STU-${raw}`;
+      const payload = {
+        username: document.getElementById("su-username").value.trim(),
+        password: document.getElementById("su-password").value.trim(),
+        full_name: document.getElementById("su-fullname").value.trim(),
+        student_number: formattedNumber,
+      };
+      try {
+        const res = await fetch(`${API_BASE}/signup/parent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Signup failed");
+        // Auto-login after signup
+        localStorage.setItem("spms_user", JSON.stringify({
+          id: data.id,
+          username: payload.username,
+          role: "Parent",
+          full_name: payload.full_name,
+        }));
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.style.display = "block";
+      }
+    });
+  </script>
+</body>
+</html>
