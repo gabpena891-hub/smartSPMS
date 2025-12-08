@@ -23,7 +23,6 @@ if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 if not db_url:
     db_url = "sqlite:///local.db"
-
 engine = create_engine(db_url, pool_pre_ping=True, pool_recycle=1800)
 SessionLocal = scoped_session(sessionmaker(bind=engine))
 Base = declarative_base()
@@ -428,6 +427,220 @@ def admin_force_migrate_uppercase():
         return error_response(500, "Force migration failed", str(exc))
 
 
+@app.route("/api/admin/system-repair", methods=["GET"])
+def admin_system_repair():
+    token = os.environ.get("ADMIN_INIT_TOKEN")
+    if token:
+        provided = request.headers.get("X-Admin-Init-Token") or request.args.get("token")
+        if provided != token:
+            return error_response(403, "Forbidden")
+
+    diag = {"db_type": engine.dialect.name}
+
+    ddl_statements = [
+        # users table
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='teacher_band') THEN
+                ALTER TABLE users ADD COLUMN teacher_band VARCHAR(50);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='approved') THEN
+                ALTER TABLE users ADD COLUMN approved INT NOT NULL DEFAULT 1;
+            END IF;
+        END $$;
+        """,
+        # grades table
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='grades' AND column_name='raw_score') THEN
+                ALTER TABLE grades ADD COLUMN raw_score INT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='grades' AND column_name='max_score') THEN
+                ALTER TABLE grades ADD COLUMN max_score INT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='grades' AND column_name='component') THEN
+                ALTER TABLE grades ADD COLUMN component VARCHAR(10);
+            END IF;
+        END $$;
+        """,
+        # subjects table
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='weight_ww') THEN
+                ALTER TABLE subjects ADD COLUMN weight_ww FLOAT DEFAULT 0;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='weight_pt') THEN
+                ALTER TABLE subjects ADD COLUMN weight_pt FLOAT DEFAULT 0;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='weight_qa') THEN
+                ALTER TABLE subjects ADD COLUMN weight_qa FLOAT DEFAULT 0;
+            END IF;
+        END $$;
+        """,
+    ]
+
+    # sqlite alternative for compatibility
+    if engine.dialect.name == "sqlite":
+        ddl_statements = [
+            "ALTER TABLE users ADD COLUMN teacher_band VARCHAR(50);",
+            "ALTER TABLE users ADD COLUMN approved INT DEFAULT 1;",
+            "ALTER TABLE grades ADD COLUMN raw_score INT;",
+            "ALTER TABLE grades ADD COLUMN max_score INT;",
+            "ALTER TABLE grades ADD COLUMN component VARCHAR(10);",
+            "ALTER TABLE subjects ADD COLUMN weight_ww FLOAT DEFAULT 0;",
+            "ALTER TABLE subjects ADD COLUMN weight_pt FLOAT DEFAULT 0;",
+            "ALTER TABLE subjects ADD COLUMN weight_qa FLOAT DEFAULT 0;",
+        ]
+
+    # Run DDL
+    try:
+        with engine.begin() as conn:
+            for stmt in ddl_statements:
+                try:
+                    conn.execute(text(stmt))
+                except Exception:
+                    # ignore if already exists
+                    pass
+        diag["schema_status"] = "Patched"
+    except Exception as exc:
+        return error_response(500, "Schema patch failed", str(exc))
+
+    session_or_none = get_session()
+    if isinstance(session_or_none, tuple):
+        session, exc = session_or_none
+        return error_response(500, "Database connection failed", str(exc))
+    session = session_or_none
+
+    # Admin seed
+    try:
+        admin_exists = session.query(User).count() > 0
+        if not admin_exists:
+            session.add(
+                User(
+                    username="Gabriel_Pena",
+                    password_hash="chin1979",
+                    role="Admin",
+                    full_name="Gabriel Pena",
+                    approved=1,
+                )
+            )
+            diag["admin_status"] = "Created"
+        else:
+            diag["admin_status"] = "Exists"
+    except Exception as exc:
+        session.rollback()
+        session.close()
+        return error_response(500, "Admin seed failed", str(exc))
+
+    # Subjects seed
+    try:
+        subj_count = session.query(Subject).count()
+        if subj_count == 0:
+            def add_subjects(names, band, category, ww, pt, qa, gmin=None, gmax=None):
+                for n in names:
+                    session.add(
+                        Subject(
+                            name=n,
+                            category=category,
+                            level_band=band,
+                            grade_min=gmin,
+                            grade_max=gmax,
+                            weight_ww=ww,
+                            weight_pt=pt,
+                            weight_qa=qa,
+                        )
+                    )
+
+            # JHS groups
+            add_subjects(
+                ["Filipino 7", "English 7", "Araling Panlipunan 7", "Edukasyon sa Pagpapakatao 7"],
+                "JHS",
+                "Core",
+                0.30,
+                0.50,
+                0.20,
+                7,
+                10,
+            )
+            add_subjects(
+                ["Mathematics 7", "Science 7", "Mathematics 10", "Science 10"],
+                "JHS",
+                "Core",
+                0.40,
+                0.40,
+                0.20,
+                7,
+                10,
+            )
+            add_subjects(
+                ["MAPEH 7", "TLE 7"],
+                "JHS",
+                "Core",
+                0.20,
+                0.60,
+                0.20,
+                7,
+                10,
+            )
+            # SHS Core
+            add_subjects(
+                [
+                    "Oral Communication",
+                    "Reading and Writing",
+                    "Komunikasyon at Pananaliksik",
+                    "General Mathematics",
+                    "Statistics and Probability",
+                    "Earth and Life Science",
+                    "Physical Education and Health",
+                    "Understanding Culture, Society, and Politics",
+                ],
+                "SHS",
+                "Core",
+                0.25,
+                0.50,
+                0.25,
+                11,
+                12,
+            )
+            # SHS Applied
+            add_subjects(
+                [
+                    "Empowerment Technologies",
+                    "Entrepreneurship",
+                    "Practical Research 1",
+                    "Practical Research 2",
+                    "Inquiries, Investigations, and Immersion",
+                ],
+                "SHS",
+                "Applied",
+                0.25,
+                0.45,
+                0.30,
+                11,
+                12,
+            )
+            subj_count = session.query(Subject).count()
+        diag["subject_count"] = subj_count
+    except Exception as exc:
+        session.rollback()
+        session.close()
+        return error_response(500, "Subject seed failed", str(exc))
+
+    try:
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        session.close()
+        return error_response(500, "Commit failed", str(exc))
+    finally:
+        session.close()
+
+    return jsonify(diag)
+
+
 # ORM models
 class User(Base):
     __tablename__ = "users"
@@ -549,14 +762,15 @@ def get_session():
 
 # Legacy MSSQL safety migrations (skip on Postgres/sqlite)
 if engine.dialect.name == "mssql":
-    with engine.connect() as conn:
-        try:
+    try:
+        with engine.connect() as conn:
+            # student_number
             col_exists = conn.execute(
                 text(
                     """
                     SELECT 1 FROM sys.columns 
                     WHERE Name = N'student_number' 
-                      AND Object_ID = Object_ID(N'students');
+                          AND Object_ID = Object_ID(N'students');
                     """
                 )
             ).first()
@@ -565,17 +779,14 @@ if engine.dialect.name == "mssql":
                     text("ALTER TABLE Students ADD student_number NVARCHAR(50) NULL UNIQUE;")
                 )
                 conn.commit()
-        except Exception:
-            pass
 
-    with engine.connect() as conn:
-        try:
+            # middle_name
             col_exists = conn.execute(
                 text(
                     """
                     SELECT 1 FROM sys.columns 
                     WHERE Name = N'middle_name' 
-                      AND Object_ID = Object_ID(N'students');
+                          AND Object_ID = Object_ID(N'students');
                     """
                 )
             ).first()
@@ -584,36 +795,33 @@ if engine.dialect.name == "mssql":
                     text("ALTER TABLE Students ADD middle_name NVARCHAR(1) NULL;")
                 )
                 conn.commit()
-        except Exception:
-            pass
 
-    with engine.connect() as conn:
-        try:
+            # approved
             col_exists = conn.execute(
                 text(
                     """
                     SELECT 1 FROM sys.columns 
                     WHERE Name = N'approved' 
-                      AND Object_ID = Object_ID(N'users');
+                          AND Object_ID = Object_ID(N'users');
                     """
                 )
             ).first()
             if not col_exists:
                 conn.execute(
-                    text("ALTER TABLE Users ADD approved INT NOT NULL CONSTRAINT DF_Users_Approved DEFAULT 1; UPDATE Users SET approved = 1 WHERE approved IS NULL;")
+                    text(
+                        "ALTER TABLE Users ADD approved INT NOT NULL CONSTRAINT DF_Users_Approved DEFAULT 1; "
+                        "UPDATE Users SET approved = 1 WHERE approved IS NULL;"
+                    )
                 )
                 conn.commit()
-        except Exception:
-            pass
 
-    with engine.connect() as conn:
-        try:
+            # teacher_band
             col_exists = conn.execute(
                 text(
                     """
                     SELECT 1 FROM sys.columns 
                     WHERE Name = N'teacher_band' 
-                      AND Object_ID = Object_ID(N'users');
+                          AND Object_ID = Object_ID(N'users');
                     """
                 )
             ).first()
@@ -622,8 +830,8 @@ if engine.dialect.name == "mssql":
                     text("ALTER TABLE Users ADD teacher_band NVARCHAR(10) NULL;")
                 )
                 conn.commit()
-        except Exception:
-            pass
+    except Exception:
+        pass
 
 
 # Simple role check using header from frontend
