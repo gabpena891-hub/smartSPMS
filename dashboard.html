@@ -391,18 +391,12 @@
     <section class="tab" id="tab-logs">
       <div class="grid">
         <div class="card">
-          <h3>Grade Records</h3>
+          <h3>Final Grades</h3>
           <div id="grade-error" class="error"></div>
           <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
             <select id="grade-student" style="min-width:180px;"></select>
             <select id="grade-subject" style="min-width:200px;">
               <option value="">All subjects</option>
-            </select>
-            <select id="grade-component" style="min-width:160px;">
-              <option value="">All components</option>
-              <option value="WW">Written Work</option>
-              <option value="PT">Performance Task</option>
-              <option value="QA">Quarterly Assessment</option>
             </select>
             <button id="grade-refresh" type="button" style="background: var(--accent); border:none; padding:10px 16px; border-radius:10px; color:white;">Refresh</button>
           </div>
@@ -410,8 +404,9 @@
             <select id="report-student" style="min-width:180px;"></select>
             <button id="grade-report-btn" type="button">Download Student PDF</button>
           </div>
+          <div id="grade-status" style="font-size:12px; color: var(--muted); margin-bottom:8px;"></div>
           <table id="grades-table">
-            <thead><tr><th>Student</th><th>Subject</th><th>Assessment</th><th>Component</th><th>Raw</th><th>Max</th><th>Grade %</th><th>Date</th></tr></thead>
+            <thead><tr><th>Student</th><th>Subject</th><th>WW Avg</th><th>PT Avg</th><th>QA Avg</th><th>Final %</th><th>Entries</th><th>Actions</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -1178,37 +1173,162 @@
       }
     }
 
+    function aggregateFinalGrades(grades) {
+      const map = new Map();
+      grades.forEach(g => {
+        const key = `${g.student_id}__${g.subject}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            student_id: g.student_id,
+            subject: g.subject,
+            ww: [],
+            pt: [],
+            qa: [],
+            manualFinal: null,
+            finalRecordId: null,
+          });
+        }
+        const entry = map.get(key);
+        const comp = (g.component || "").toUpperCase();
+        const assess = (g.assessment || "").toLowerCase();
+        if (comp === "FINAL" || assess.includes("final grade")) {
+          entry.manualFinal = Number(g.grade_value);
+          entry.finalRecordId = g.id;
+          return;
+        }
+        if (comp === "WW") entry.ww.push(Number(g.grade_value));
+        if (comp === "PT") entry.pt.push(Number(g.grade_value));
+        if (comp === "QA") entry.qa.push(Number(g.grade_value));
+      });
+
+      return Array.from(map.values()).map(entry => {
+        const subjectMeta = subjectsCache.find(s => s.name === entry.subject);
+        const band = classifyGradeLevel(
+          studentsCache.find(s => s.id === entry.student_id)?.grade_level
+        );
+        const weights = subjectMeta
+          ? {
+              ww: (subjectMeta.weight_ww || 0) * 100,
+              pt: (subjectMeta.weight_pt || 0) * 100,
+              qa: (subjectMeta.weight_qa || 0) * 100,
+            }
+          : getWeightsForSubject(entry.subject, subjectMeta, band);
+        const avg = arr => (arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null);
+        const wwAvg = avg(entry.ww);
+        const ptAvg = avg(entry.pt);
+        const qaAvg = avg(entry.qa);
+        let finalVal = entry.manualFinal;
+        if (finalVal == null) {
+          const parts = [];
+          if (wwAvg != null && weights?.ww) parts.push(wwAvg * (weights.ww/100));
+          if (ptAvg != null && weights?.pt) parts.push(ptAvg * (weights.pt/100));
+          if (qaAvg != null && weights?.qa) parts.push(qaAvg * (weights.qa/100));
+          if (parts.length > 0 && weights) {
+            finalVal = parts.reduce((a,b)=>a+b,0);
+          } else {
+            const raw = [wwAvg, ptAvg, qaAvg].filter(v => v != null);
+            finalVal = raw.length ? raw.reduce((a,b)=>a+b,0) / raw.length : null;
+          }
+        }
+        return {
+          ...entry,
+          wwAvg,
+          ptAvg,
+          qaAvg,
+          final: finalVal,
+          count: entry.ww.length + entry.pt.length + entry.qa.length,
+        };
+      });
+    }
+
+    async function saveFinalGrade(entry) {
+      const payload = {
+        student_id: entry.student_id,
+        subject: entry.subject,
+        assessment: "Final Grade",
+        component: "FINAL",
+        grade_value: Number(entry.final?.toFixed(2) || 0),
+        recorded_on: new Date().toISOString().slice(0,10),
+        recorded_by: currentUser?.id,
+      };
+      if (entry.finalRecordId) {
+        await fetchJSON(`/grades/${entry.finalRecordId}`, { method: "PUT", body: JSON.stringify(payload) });
+      } else {
+        await fetchJSON("/grades", { method: "POST", body: JSON.stringify(payload) });
+      }
+    }
+
+    async function deleteFinalGrade(id) {
+      if (!id) return;
+      await fetchJSON(`/grades/${id}`, { method: "DELETE" });
+    }
+
     async function loadGradesTable() {
       const grades = await fetchJSON("/grades");
       gradesCache = grades;
       const tbody = document.querySelector("#grades-table tbody");
+      const statusEl = document.getElementById("grade-status");
       tbody.innerHTML = "";
       const studentFilter = Number(document.getElementById("grade-student").value) || null;
       const subjectFilter = document.getElementById("grade-subject").value || "";
-      const compFilter = document.getElementById("grade-component").value || "";
       const filtered = grades.filter(g => {
         if (studentFilter && g.student_id !== studentFilter) return false;
         if (subjectFilter && g.subject !== subjectFilter) return false;
-        if (compFilter && g.component !== compFilter) return false;
         if (currentUser?.role === "Teacher" && teacherBand) {
           const s = studentsCache.find(st => st.id === g.student_id);
           if (classifyGradeLevel(s?.grade_level) !== teacherBand) return false;
         }
         return true;
       });
-      filtered.slice(0, 200).forEach(g => {
-        const st = studentsCache.find(s => s.id === g.student_id);
-        const studentName = st ? `${st.first_name} ${st.last_name}` : g.student_id;
+
+      const summaries = aggregateFinalGrades(filtered);
+      if (!summaries.length) {
+        tbody.innerHTML = "<tr><td colspan='8' style='text-align:center; padding:12px;'>No grade data yet.</td></tr>";
+        statusEl.textContent = "";
+        return;
+      }
+      statusEl.textContent = `Showing ${summaries.length} final grade rows`;
+      summaries.slice(0, 200).forEach((entry, idx) => {
+        const st = studentsCache.find(s => s.id === entry.student_id);
+        const studentName = st ? `${st.first_name} ${st.last_name}` : entry.student_id;
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${studentName}</td>
-                        <td>${g.subject}</td>
-                        <td>${g.assessment}</td>
-                        <td>${g.component || "-"}</td>
-                        <td>${g.raw_score ?? "-"}</td>
-                        <td>${g.max_score ?? "-"}</td>
-                        <td>${g.grade_value ?? "-"}</td>
-                        <td>${g.recorded_on}</td>`;
+                        <td>${entry.subject}</td>
+                        <td>${entry.wwAvg != null ? entry.wwAvg.toFixed(2) : "-"}</td>
+                        <td>${entry.ptAvg != null ? entry.ptAvg.toFixed(2) : "-"}</td>
+                        <td>${entry.qaAvg != null ? entry.qaAvg.toFixed(2) : "-"}</td>
+                        <td>${entry.final != null ? entry.final.toFixed(2) : "-"}</td>
+                        <td>${entry.count}</td>
+                        <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                          <button class="final-save" data-idx="${idx}" style="padding:6px 10px; background: var(--accent); border:none; color:white; border-radius:8px;">${entry.finalRecordId ? "Update" : "Save"}</button>
+                          <button class="final-delete" data-id="${entry.finalRecordId || ""}" ${entry.finalRecordId ? "" : "disabled"} style="padding:6px 10px; background: rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#fecdd3; border-radius:8px;">Delete</button>
+                        </td>`;
         tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll(".final-save").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const idx = Number(btn.dataset.idx);
+          const entry = summaries[idx];
+          try {
+            await saveFinalGrade(entry);
+            await loadGradesTable();
+          } catch (ex) {
+            document.getElementById("grade-error").textContent = ex.message;
+          }
+        });
+      });
+      tbody.querySelectorAll(".final-delete").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.id;
+          if (!id) return;
+          try {
+            await deleteFinalGrade(id);
+            await loadGradesTable();
+          } catch (ex) {
+            document.getElementById("grade-error").textContent = ex.message;
+          }
+        });
       });
     }
 
