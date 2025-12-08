@@ -441,6 +441,9 @@
           <h3>Final Grades</h3>
           <div id="grade-error" class="error"></div>
           <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+            <select id="grade-section" style="min-width:160px;">
+              <option value="">All sections</option>
+            </select>
             <select id="grade-student" style="min-width:180px;"></select>
             <select id="grade-subject" style="min-width:200px;">
               <option value="">All subjects</option>
@@ -518,6 +521,9 @@
           </select>
           <select id="sheet-subject">
             <option value="">Select subject</option>
+          </select>
+          <select id="sheet-section">
+            <option value="">All sections</option>
           </select>
           <button id="sheet-add-activity" type="button" style="background: rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4);">Add Column</button>
           <button id="sheet-save" type="button" style="background: var(--accent); border:none;">Save Sheet</button>
@@ -684,6 +690,7 @@
     let teachersCache = [];
     let subjectsCache = [];
     let sectionsCache = [];
+    let gradeSheetSectionId = null;
     let currentUser = null;
     let usersCache = [];
     let editingSubjectId = null;
@@ -1113,15 +1120,18 @@
       const eligible = bandFilter
         ? studentsCache.filter(s => classifyGradeLevel(s.grade_level) === bandFilter)
         : studentsCache;
-      if (eligible.length === 0) {
-        sheetError.textContent = `No students for ${bandFilter || "this"} level.`;
+      const sectionSel = document.getElementById("sheet-section");
+      const secFilter = Number(sectionSel?.value) || null;
+      const eligibleFiltered = secFilter ? eligible.filter(s => s.section_id === secFilter) : eligible;
+      if (eligibleFiltered.length === 0) {
+        sheetError.textContent = `No students for ${secFilter ? "this section" : (bandFilter || "this")} level.`;
         return;
       }
       sheetError.textContent = "";
 
       gradeSheetRows = [];
       gradeSheetRowsData = {};
-      eligible.forEach(s => {
+      eligibleFiltered.forEach(s => {
         const row = { student_id: s.id, scores: {} };
         gradeSheetRows.push(row);
         gradeSheetRowsData[s.id] = {};
@@ -1245,6 +1255,20 @@
         studentSel.innerHTML = `<option value="">Select student</option>`;
         studentsCache.forEach(st => {
           studentSel.innerHTML += `<option value="${st.id}">${st.first_name} ${st.last_name} ${st.grade_level ? "(G"+st.grade_level+")" : ""}</option>`;
+        });
+      }
+      const gradeSectionSel = document.getElementById("grade-section");
+      if (gradeSectionSel) {
+        gradeSectionSel.innerHTML = `<option value="">All sections</option>`;
+        sectionsCache.forEach(s => {
+          gradeSectionSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+      }
+      const sheetSectionSel = document.getElementById("sheet-section");
+      if (sheetSectionSel) {
+        sheetSectionSel.innerHTML = `<option value="">All sections</option>`;
+        sectionsCache.forEach(s => {
+          sheetSectionSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
         });
       }
       updateSectionRoster();
@@ -1426,11 +1450,16 @@
       const tbody = document.querySelector("#grades-table tbody");
       const statusEl = document.getElementById("grade-status");
       tbody.innerHTML = "";
+      const sectionFilter = Number(document.getElementById("grade-section")?.value) || null;
       const studentFilter = Number(document.getElementById("grade-student").value) || null;
       const subjectFilter = document.getElementById("grade-subject").value || "";
       const filtered = grades.filter(g => {
         if (studentFilter && g.student_id !== studentFilter) return false;
         if (subjectFilter && g.subject !== subjectFilter) return false;
+        if (sectionFilter) {
+          const st = studentsCache.find(st => st.id === g.student_id);
+          if ((st?.section_id || null) !== sectionFilter) return false;
+        }
         if (currentUser?.role === "Teacher" && teacherBand) {
           const s = studentsCache.find(st => st.id === g.student_id);
           if (classifyGradeLevel(s?.grade_level) !== teacherBand) return false;
@@ -1991,6 +2020,10 @@
       if (gradeSubjectSelect) {
         gradeSubjectSelect.addEventListener("change", () => computeGradeTotal());
       }
+      const gradeSectionSelect = document.getElementById("grade-section");
+      if (gradeSectionSelect) {
+        gradeSectionSelect.addEventListener("change", () => loadGradesTable());
+      }
 
       const sheetSubject = document.getElementById("sheet-subject");
       if (sheetSubject) {
@@ -2000,6 +2033,13 @@
         });
         document.getElementById("sheet-add-activity").addEventListener("click", () => addGradeSheetActivity());
         document.getElementById("sheet-save").addEventListener("click", () => saveGradeSheetBulk());
+      }
+      const sheetSection = document.getElementById("sheet-section");
+      if (sheetSection) {
+        sheetSection.addEventListener("change", () => {
+          gradeSheetSectionId = Number(sheetSection.value) || null;
+          rebuildGradeSheetFromData();
+        });
       }
 
       const sectionForm = document.getElementById("section-form");

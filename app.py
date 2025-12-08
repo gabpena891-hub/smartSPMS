@@ -1277,6 +1277,7 @@ def bulk_save_grades():
 def list_grades():
     student_id = request.args.get("student_id", type=int)
     subject = request.args.get("subject")
+    section_id = request.args.get("section_id", type=int)
     session_or_none = get_session()
     if isinstance(session_or_none, tuple):
         session, exc = session_or_none
@@ -1289,6 +1290,8 @@ def list_grades():
             query = query.filter(Grade.student_id == student_id)
         if subject:
             query = query.filter(Grade.subject == subject)
+        if section_id:
+            query = query.join(Student, Student.id == Grade.student_id).filter(Student.section_id == section_id)
         if band:
             # Filter by student band
             grades = []
