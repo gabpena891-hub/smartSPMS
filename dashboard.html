@@ -1887,6 +1887,7 @@
     }
 
     async function refreshAll() {
+      setTodayAttendanceDate();
       await refreshUserBand();
       await Promise.all([
         loadDashboard(),
@@ -1972,6 +1973,7 @@
       const user = ensureUser();
       if (!user) return;
 
+      setTodayAttendanceDate();
       applyRoleVisibility(user.role);
 
       document.querySelectorAll("nav button[data-tab]").forEach(btn => {
