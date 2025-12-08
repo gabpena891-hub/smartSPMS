@@ -935,24 +935,34 @@
     }
 
     function computeGradeTotal() {
-      const studentId = Number(document.getElementById("grade-student").value);
+      const studentSel = document.getElementById("grade-student");
+      const subjectSel = document.getElementById("grade-subject");
+      const wwEl = document.getElementById("grade-ww");
+      const ptEl = document.getElementById("grade-pt");
+      const qaEl = document.getElementById("grade-qa");
+      const weightLabel = document.getElementById("grade-weights");
+      const valueEl = document.getElementById("grade-value");
+      // If the old single-entry controls are not present, safely exit.
+      if (!studentSel || !subjectSel || !wwEl || !ptEl || !qaEl || !weightLabel || !valueEl) return;
+
+      const studentId = Number(studentSel.value);
       const student = studentsCache.find(s => s.id === studentId);
       const band = classifyGradeLevel(student?.grade_level);
-      const subjectName = document.getElementById("grade-subject").value;
+      const subjectName = subjectSel.value;
       const subjectMeta = subjectsCache.find(s => s.name === subjectName);
       const weights = getWeightsForSubject(subjectName, subjectMeta, band);
-      const ww = Number(document.getElementById("grade-ww").value) || 0;
-      const pt = Number(document.getElementById("grade-pt").value) || 0;
-      const qa = Number(document.getElementById("grade-qa").value) || 0;
-      const weightLabel = document.getElementById("grade-weights");
+      const ww = Number(wwEl.value) || 0;
+      const pt = Number(ptEl.value) || 0;
+      const qa = Number(qaEl.value) || 0;
+
       if (!weights) {
         weightLabel.textContent = "Weights: select a student and subject";
-        document.getElementById("grade-value").value = "";
+        valueEl.value = "";
         return;
       }
       weightLabel.textContent = `Weights: WW ${weights.ww}%, PT ${weights.pt}%, QA ${weights.qa}%`;
       const total = ((ww * weights.ww) + (pt * weights.pt) + (qa * weights.qa)) / 100;
-      document.getElementById("grade-value").value = total ? total.toFixed(2) : "";
+      valueEl.value = total ? total.toFixed(2) : "";
     }
 
     function downloadStudentReport() {
@@ -1636,11 +1646,14 @@
         await renderTrendChart(studentId);
       });
 
-      document.getElementById("grade-student").addEventListener("change", () => populateGradeSubjects());
-      document.getElementById("grade-subject").addEventListener("change", () => computeGradeTotal());
-      ["grade-ww","grade-pt","grade-qa"].forEach(id => {
-        document.getElementById(id).addEventListener("input", () => computeGradeTotal());
-      });
+      const gradeStudent = document.getElementById("grade-student");
+      if (gradeStudent) {
+        gradeStudent.addEventListener("change", () => populateGradeSubjects());
+      }
+      const gradeSubjectSelect = document.getElementById("grade-subject");
+      if (gradeSubjectSelect) {
+        gradeSubjectSelect.addEventListener("change", () => computeGradeTotal());
+      }
 
       const sheetSubject = document.getElementById("sheet-subject");
       if (sheetSubject) {
