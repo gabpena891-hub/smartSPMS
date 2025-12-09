@@ -1075,6 +1075,16 @@ def current_teacher_band():
     return None
 
 
+def current_teacher_id():
+    role = request.headers.get("X-User-Role")
+    if role != "Teacher":
+        return None
+    try:
+        return int(request.headers.get("X-User-Id"))
+    except (TypeError, ValueError):
+        return None
+
+
 # Create missing tables (Communications, Subjects) without touching existing ones
 try:
     Base.metadata.create_all(
@@ -1278,6 +1288,12 @@ def add_grade():
     if missing:
         return error_response(400, f"Missing fields: {', '.join(missing)}")
 
+    teacher_id = current_teacher_id()
+    if teacher_id:
+        subj = SessionLocal().query(Subject).filter(Subject.name == data.get("subject")).first()
+        if subj and subj.teacher_id not in (None, teacher_id):
+            return error_response(403, "Not allowed to grade this subject")
+
     recorded_on = data.get("recorded_on")
     try:
         recorded_date = (
@@ -1324,6 +1340,7 @@ def bulk_save_grades():
     if not isinstance(data, list):
         return error_response(400, "Payload must be a list")
 
+    teacher_id = current_teacher_id()
     session_or_none = get_session()
     if isinstance(session_or_none, tuple):
         session, exc = session_or_none
@@ -1337,6 +1354,11 @@ def bulk_save_grades():
             if missing:
                 session.rollback()
                 return error_response(400, f"Missing fields: {', '.join(missing)}")
+            if teacher_id:
+                subj = session.query(Subject).filter(Subject.name == item.get("subject")).first()
+                if subj and subj.teacher_id not in (None, teacher_id):
+                    session.rollback()
+                    return error_response(403, "Not allowed to grade this subject")
             raw = int(item.get("raw_score", 0))
             maxs = int(item.get("max_score", 0))
             grade_val = float(raw) / maxs * 100 if maxs > 0 else 0.0
@@ -1397,6 +1419,7 @@ def list_grades():
     session = session_or_none
     try:
         band = current_teacher_band()
+        teacher_id = current_teacher_id()
         query = session.query(Grade)
         if student_id:
             query = query.filter(Grade.student_id == student_id)
@@ -1404,6 +1427,10 @@ def list_grades():
             query = query.filter(Grade.subject == subject)
         if section_id:
             query = query.join(Student, Student.id == Grade.student_id).filter(Student.section_id == section_id)
+        if teacher_id:
+            query = query.join(Subject, Subject.name == Grade.subject).filter(
+                or_(Subject.teacher_id == None, Subject.teacher_id == teacher_id)  # noqa: E711
+            )
         if band:
             # Filter by student band
             grades = []
@@ -1448,6 +1475,11 @@ def update_grade(grade_id: int):
         grade = session.query(Grade).filter_by(id=grade_id).first()
         if not grade:
             return error_response(404, "Grade not found")
+        teacher_id = current_teacher_id()
+        if teacher_id:
+            subj = session.query(Subject).filter(Subject.name == grade.subject).first()
+            if subj and subj.teacher_id not in (None, teacher_id):
+                return error_response(403, "Not allowed to modify this subject")
         for field in ["subject", "assessment", "grade_value", "recorded_by", "component", "raw_score", "max_score"]:
             if field in data:
                 setattr(grade, field, data[field])
@@ -1476,6 +1508,11 @@ def delete_grade(grade_id: int):
         grade = session.query(Grade).filter_by(id=grade_id).first()
         if not grade:
             return error_response(404, "Grade not found")
+        teacher_id = current_teacher_id()
+        if teacher_id:
+            subj = session.query(Subject).filter(Subject.name == grade.subject).first()
+            if subj and subj.teacher_id not in (None, teacher_id):
+                return error_response(403, "Not allowed to delete this subject")
         session.delete(grade)
         session.commit()
         return jsonify({"message": "Grade deleted"})
@@ -2113,11 +2150,19 @@ def list_subjects():
     session = session_or_none
     try:
         band_header = current_teacher_band()
+        teacher_id = current_teacher_id()
         query = session.query(Subject)
         if level_band:
             query = query.filter(Subject.level_band == level_band)
         if band_header:
             query = query.filter(Subject.level_band == band_header)
+        if teacher_id:
+            query = query.filter(
+                or_(
+                    Subject.teacher_id == None,  # noqa: E711 allow unassigned
+                    Subject.teacher_id == teacher_id,
+                )
+            )
         if track:
             query = query.filter(Subject.track == track)
         if category:

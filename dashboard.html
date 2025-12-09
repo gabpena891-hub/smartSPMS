@@ -764,6 +764,7 @@
       const headers = { "Content-Type": "application/json" };
       if (currentUser?.role) headers["X-User-Role"] = currentUser.role;
       if (currentUser?.role === "Teacher" && teacherBand) headers["X-Teacher-Band"] = teacherBand;
+      if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
       const res = await fetch(`${API_BASE}${path}`, {
         headers: { ...headers, ...(options.headers || {}) },
         ...options,
