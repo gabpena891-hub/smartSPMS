@@ -153,7 +153,7 @@
     .card .value { font-size: 32px; font-weight: 700; color: white; letter-spacing: -0.03em; }
 
     /* Grid Layouts */
-    .grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); margin-bottom: 32px; }
+    .grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: 32px; }
     
     /* Charts */
     canvas { 
@@ -164,21 +164,29 @@
     }
 
     /* Tables */
+    .table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-top: 16px;
+      background: var(--card);
+    }
     table {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-      margin-top: 16px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      margin-top: 0;
     }
     th, td { 
       padding: 16px 20px; 
       text-align: left; 
       font-size: 14px; 
       border-bottom: 1px solid var(--border); 
+      white-space: nowrap; /* Prevent wrapping in compressed views */
     }
     th { 
       background: rgba(255,255,255,0.02); 
@@ -194,7 +202,7 @@
     /* Forms */
     form {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 16px;
       margin-top: 20px;
       background: rgba(30, 41, 59, 0.5);
@@ -233,6 +241,16 @@
       font-family: inherit;
     }
     button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+
+    button.btn-secondary {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    button.btn-secondary:hover {
+      background: rgba(255,255,255,0.1);
+      color: white;
+    }
     
     /* Specific Button Styles */
     .delete-student {
@@ -293,25 +311,144 @@
     @media (max-width: 900px) {
       body { grid-template-columns: 1fr; }
       aside { 
-        height: auto; 
-        flex-direction: row; 
-        overflow-x: auto; 
-        position: relative; 
-        padding: 16px;
-        align-items: center;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 260px;
+        z-index: 50;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        border-right: 1px solid var(--border);
+        background: var(--sidebar);
       }
-      .brand { margin-bottom: 0; margin-right: 20px; font-size: 16px; }
-      nav { flex-direction: row; }
-      nav button { white-space: nowrap; padding: 8px 12px; font-size: 13px; }
-      nav button[onclick="logout()"] { margin-left: auto; margin-top: 0; }
+      aside.open { transform: translateX(0); }
+      
+      /* Mobile Header */
+      .mobile-header {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: var(--sidebar);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 40;
+      }
+      
+      .brand { margin-bottom: 20px; font-size: 20px; }
+      nav { flex-direction: column; }
+      nav button { white-space: normal; }
+      nav button[onclick="logout()"] { margin-top: auto; }
       main { padding: 20px; }
+      
+      /* Overlay for mobile sidebar */
+      #sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 45;
+        display: none;
+        backdrop-filter: blur(4px);
+      }
+      #sidebar-overlay.active { display: block; }
+    }
+
+    /* Toast Notifications */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .toast {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      color: white;
+      font-size: 14px;
+      min-width: 300px;
+      animation: slideIn 0.3s ease forwards;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--danger); }
+    .toast.info { border-left: 4px solid var(--accent); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+    /* Loading Overlay */
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    #loading-overlay.active { opacity: 1; pointer-events: all; }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--accent);
+      border-bottom-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* Table Container for horizontal scroll */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+    }
+    .table-container table {
+      margin-top: 0;
+      border: none;
+      border-radius: 0;
     }
   </style>
 </head>
 <body>
-  <aside>
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+  <div id="toast-container"></div>
+  <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <div class="mobile-header" style="display:none;">
+    <div class="brand" style="margin:0; font-size:16px;">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 1L28.99 8.5V23.5L16 31L3.01 23.5V8.5L16 1Z" fill="rgba(99, 102, 241, 0.2)" stroke="#6366f1" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M8 16H12L15 11L19 21L22 16H26" stroke="#f8fafc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>SPMS</span>
+    </div>
+    <button onclick="toggleSidebar()" style="padding:8px; background:transparent;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <aside id="sidebar">
     <div class="brand" style="display:flex; align-items:center; gap:12px;">
       <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M16 1L28.99 8.5V23.5L16 31L3.01 23.5V8.5L16 1Z" 
@@ -383,14 +520,16 @@
       </form>
       <datalist id="teacher-options"></datalist>
       <p class="section-title">Directory</p>
+      <div class="table-container">
         <table id="students-table">
           <thead><tr><th>Student #</th><th>Name</th><th>Grade</th><th>Homeroom</th><th>Birthdate (DOB)</th><th>Actions</th></tr></thead>
-        <tbody></tbody>
-      </table>
+          <tbody></tbody>
+        </table>
+      </div>
       <div id="admin-students-panel" class="card" style="margin-top:16px; display:none;">
         <h3>Students (Admin)</h3>
         <input id="admin-student-search" class="pill-input" placeholder="Search student name or number..." style="margin-bottom:10px;">
-        <div style="max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:10px;">
+        <div class="table-container" style="max-height:260px;">
           <table id="admin-students-table">
             <thead><tr><th>#</th><th>Name</th><th>Grade</th><th>Section</th></tr></thead>
             <tbody></tbody>
@@ -428,7 +567,7 @@
             <select id="assign-student" style="min-width:200px;"></select>
             <button id="assign-btn" type="button">Assign</button>
           </div>
-          <div id="section-roster" style="max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:10px;">
+          <div id="section-roster" class="table-container" style="max-height:260px;">
             <table>
               <thead><tr><th>Student</th><th>Grade</th></tr></thead>
               <tbody id="section-roster-body"></tbody>
@@ -438,10 +577,12 @@
       </div>
       <div class="card">
         <h3>Sections Directory</h3>
-        <table id="sections-table">
-          <thead><tr><th>Name</th><th>Band</th><th>Grade</th><th>Track</th><th>Adviser</th><th>Students</th><th>Action</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <div class="table-container">
+          <table id="sections-table">
+            <thead><tr><th>Name</th><th>Band</th><th>Grade</th><th>Track</th><th>Adviser</th><th>Students</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -458,16 +599,18 @@
             <select id="grade-subject" style="min-width:200px;">
               <option value="">All subjects</option>
             </select>
-            <button id="grade-refresh" type="button" style="background: var(--accent); border:none; padding:10px 16px; border-radius:10px; color:white;">Refresh</button>
+            <button id="grade-refresh" type="button" class="btn-secondary">Refresh</button>
           </div>
           <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
             <button id="grade-report-btn" type="button">Download Report Card (selected student)</button>
           </div>
           <div id="grade-status" style="font-size:12px; color: var(--muted); margin-bottom:8px;"></div>
-          <table id="grades-table">
-            <thead><tr><th>Student</th><th>Subject</th><th>WW Avg</th><th>PT Avg</th><th>QA Avg</th><th>Final %</th><th>Entries</th><th>Actions</th></tr></thead>
-            <tbody></tbody>
-          </table>
+          <div class="table-container">
+            <table id="grades-table">
+              <thead><tr><th>Student</th><th>Subject</th><th>WW Avg</th><th>PT Avg</th><th>QA Avg</th><th>Final %</th><th>Entries</th><th>Actions</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -487,7 +630,7 @@
             <input id="attendance-date" type="date" required readonly />
             <button id="attendance-save" type="button" style="background: var(--accent); border:none;">Save Sheet</button>
           </div>
-          <div style="max-height: 360px; overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
+          <div class="table-container" style="max-height: 360px;">
             <table id="attendance-sheet-table">
               <thead><tr><th>Student</th><th>Status</th></tr></thead>
               <tbody></tbody>
@@ -499,17 +642,21 @@
       <div class="grid">
         <div class="card">
           <h3>Today's Attendance</h3>
-          <table id="attendance-today-table">
-            <thead><tr><th>Student</th><th>Date</th><th>Status</th><th>Update</th></tr></thead>
-            <tbody></tbody>
-          </table>
+          <div class="table-container">
+            <table id="attendance-today-table">
+              <thead><tr><th>Student</th><th>Date</th><th>Status</th><th>Update</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
         <div class="card">
           <h3>Attendance History (Editable)</h3>
-          <table id="attendance-history-table">
-            <thead><tr><th>Student</th><th>Date</th><th>Status</th><th>Update</th></tr></thead>
-            <tbody></tbody>
-          </table>
+          <div class="table-container">
+            <table id="attendance-history-table">
+              <thead><tr><th>Student</th><th>Date</th><th>Status</th><th>Update</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -518,7 +665,7 @@
       <div class="card">
           <div class="flex" style="margin-bottom: 20px;">
             <select id="trend-student" style="max-width: 300px;"></select>
-            <button id="trend-refresh">Refresh Trends</button>
+            <button id="trend-refresh" class="btn-secondary">Refresh Trends</button>
           </div>
           <h3>Grade Trend (by assessment date)</h3>
           <canvas id="trendChart" height="120" style="max-height: 400px;"></canvas>
@@ -541,11 +688,11 @@
           <select id="sheet-section">
             <option value="">All sections</option>
           </select>
-          <button id="sheet-add-activity" type="button" style="background: rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4);">Add Column</button>
+          <button id="sheet-add-activity" type="button" class="btn-secondary">Add Column</button>
           <button id="sheet-save" type="button" style="background: var(--accent); border:none;">Save Sheet</button>
         </div>
         <div id="sheet-weights" style="font-size:12px; color: var(--muted); margin-bottom: 8px;">Weights: -</div>
-        <div style="max-height: 420px; overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
+        <div class="table-container" style="max-height: 420px;">
           <table id="sheet-table">
             <thead><tr id="sheet-header-row"><th>Student</th><th>Final</th></tr></thead>
             <tbody></tbody>
@@ -583,10 +730,12 @@
         <button type="submit" style="grid-column: 1 / -1;">Send / Log Message</button>
       </form>
       <p class="section-title">Message History</p>
-      <table id="comm-table">
-        <thead><tr><th>Subject</th><th>From</th><th>To</th><th>Student</th><th>Date</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-container">
+        <table id="comm-table">
+          <thead><tr><th>Subject</th><th>From</th><th>To</th><th>Student</th><th>Date</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </section>
 
     <section class="tab" id="tab-subjects">
@@ -628,10 +777,12 @@
           </div>
         </form>
         <div style="max-height: 320px; overflow-y: auto; margin-top: 12px;">
-          <table id="subjects-table">
-            <thead><tr><th>Name</th><th>Level</th><th>Cat.</th><th>Track</th><th>Teacher</th><th>Grades</th><th>Action</th></tr></thead>
-            <tbody></tbody>
-          </table>
+          <div class="table-container">
+            <table id="subjects-table">
+              <thead><tr><th>Name</th><th>Level</th><th>Cat.</th><th>Track</th><th>Teacher</th><th>Grades</th><th>Action</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -722,6 +873,39 @@
     let gradeSheetRowsData = {}; // {studentId: {activityId: raw}}
     let gradeSheetSubjectWeights = { ww: 0.3, pt: 0.5, qa: 0.2 };
 
+    // --- UI Utilities ---
+    function toggleSidebar() {
+      const sidebar = document.querySelector("aside");
+      const overlay = document.getElementById("sidebar-overlay");
+      sidebar.classList.toggle("open");
+      overlay.classList.toggle("active");
+    }
+
+    function toggleLoading(show) {
+      const overlay = document.getElementById("loading-overlay");
+      if (show) overlay.classList.add("active");
+      else overlay.classList.remove("active");
+    }
+
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toast-container");
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      
+      let icon = "ℹ️";
+      if (type === "success") icon = "✅";
+      if (type === "error") icon = "⚠️";
+
+      toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.animation = "fadeOut 0.3s ease forwards";
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+    // -------------------
+
     function classifyGradeLevel(gradeStr) {
       if (!gradeStr) return null;
       const m = String(gradeStr).match(/(\d{1,2})/);
@@ -782,13 +966,26 @@
       if (currentUser?.role === "Teacher" && teacherBand) headers["X-Teacher-Band"] = teacherBand;
       if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
       if (currentUser?.full_name) headers["X-User-Name"] = currentUser.full_name;
-      const res = await fetch(`${API_BASE}${path}`, {
-        headers: { ...headers, ...(options.headers || {}) },
-        ...options,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Request failed");
-      return data;
+      
+      toggleLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}${path}`, {
+          headers: { ...headers, ...(options.headers || {}) },
+          ...options,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Request failed");
+        return data;
+      } catch (err) {
+        if (!options.silent) {
+            // Only show toast if not silent (optional)
+            // But for now, we usually handle errors in the caller.
+            // Let's just rethrow.
+        }
+        throw err;
+      } finally {
+        toggleLoading(false);
+      }
     }
 
     async function loadDashboard() {
@@ -852,8 +1049,9 @@
           try {
             await fetchJSON(`/students/${btn.dataset.id}`, { method: "DELETE" });
             await refreshAll();
+            showToast("Student deleted", "success");
           } catch (ex) {
-            alert(ex.message || "Failed to delete student.");
+            showToast(ex.message || "Failed to delete student.", "error");
           }
         };
       });
@@ -947,8 +1145,9 @@
             await fetchJSON(`/subjects/${btn.dataset.id}`, { method: "DELETE" });
             await loadSubjects();
             populateGradeSubjects();
+            showToast("Subject deleted", "success");
           } catch (ex) {
-            alert(ex.message || "Failed to delete subject.");
+            showToast(ex.message || "Failed to delete subject.", "error");
           }
         };
       });
@@ -1107,7 +1306,7 @@
     function downloadStudentReport(forcedId) {
       const studentId = forcedId ?? Number(document.getElementById("grade-student")?.value);
       const student = studentsCache.find(s => s.id === studentId);
-      if (!student) { alert("Select a student."); return; }
+      if (!student) { showToast("Select a student.", "error"); return; }
       fetchJSON(`/report-card?student_id=${studentId}`)
         .then(rc => {
           const rows = (rc.subjects || []).map(g => `<tr><td>${g.subject}</td><td>${g.average}</td><td>${g.entries}</td></tr>`).join("");
@@ -1130,23 +1329,23 @@
             </table>
             </body></html>`;
           const win = window.open("", "_blank");
-          if (!win) { alert("Popup blocked. Allow popups to download PDF/print."); return; }
+          if (!win) { showToast("Popup blocked. Allow popups to download PDF/print.", "error"); return; }
           win.document.write(html);
           win.document.close();
           win.focus();
           win.print();
         })
-        .catch(err => alert(err.message || "Failed to load report card"));
+        .catch(err => showToast(err.message || "Failed to load report card", "error"));
     }
 
     function addGradeSheetActivity() {
       const name = prompt("Activity name (e.g., Quiz 1):", "");
       if (!name) return;
       const max = Number(prompt("Max score:", "20"));
-      if (!max || max <= 0) { alert("Max score must be > 0"); return; }
+      if (!max || max <= 0) { showToast("Max score must be > 0", "error"); return; }
       const comp = prompt("Component (WW/PT/QA):", "WW");
       const compNorm = (comp || "").toUpperCase();
-      if (!["WW","PT","QA"].includes(compNorm)) { alert("Component must be WW, PT, or QA"); return; }
+      if (!["WW","PT","QA"].includes(compNorm)) { showToast("Component must be WW, PT, or QA", "error"); return; }
       const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();
       gradeSheetActivities.push({ id, label: name, type: compNorm, max_score: max });
       rebuildGradeSheetFromData();
@@ -1933,8 +2132,9 @@
         sel.onchange = async () => {
           try {
             await fetchJSON(`/users/${sel.dataset.id}`, { method: "PUT", body: JSON.stringify({ role: sel.value }) });
+            showToast("User role updated", "success");
           } catch (ex) {
-            alert(ex.message);
+            showToast(ex.message, "error");
             await loadUsers();
           }
         };
@@ -1944,8 +2144,9 @@
           try {
             await fetchJSON(`/users/${sel.dataset.id}`, { method: "PUT", body: JSON.stringify({ teacher_band: sel.value || null }) });
             await loadUsers();
+            showToast("Teacher band updated", "success");
           } catch (ex) {
-            alert(ex.message);
+            showToast(ex.message, "error");
             await loadUsers();
           }
         };
@@ -1955,8 +2156,9 @@
           try {
             await fetchJSON(`/users/${btn.dataset.id}`, { method: "PUT", body: JSON.stringify({ approved: true }) });
             await loadUsers();
+            showToast("User approved", "success");
           } catch (ex) {
-            alert(ex.message);
+            showToast(ex.message, "error");
           }
         };
       });
@@ -1966,8 +2168,9 @@
           try {
             await fetchJSON(`/users/${btn.dataset.id}`, { method: "DELETE" });
             await loadUsers();
+            showToast("User deleted", "success");
           } catch (ex) {
-            alert(ex.message);
+            showToast(ex.message, "error");
           }
         };
       });
