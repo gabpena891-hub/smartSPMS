@@ -70,21 +70,31 @@ def ensure_section_schema():
         END $$;
         """
     else:
-        ddl = """
-        CREATE TABLE IF NOT EXISTS student_subjects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_id INTEGER NOT NULL,
-            subject_id INTEGER NOT NULL,
-            teacher_id INTEGER,
-            section_id INTEGER,
-            term VARCHAR(20),
-            active INT DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        """
+        ddls = [
+            "ALTER TABLE students ADD COLUMN section_id INTEGER;",
+            """
+            CREATE TABLE IF NOT EXISTS student_subjects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                subject_id INTEGER NOT NULL,
+                teacher_id INTEGER,
+                section_id INTEGER,
+                term VARCHAR(20),
+                active INT DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+        ]
     try:
         with engine.begin() as conn:
-            conn.execute(text(ddl))
+            if engine.dialect.name == "postgresql":
+                conn.execute(text(ddl))
+            else:
+                for stmt in ddls:
+                    try:
+                        conn.execute(text(stmt))
+                    except Exception:
+                        pass
     except Exception as exc:
         logging.warning("ensure_section_schema failed: %s", exc)
 
