@@ -313,6 +313,7 @@
       font-size: 13px; 
       font-weight: 500;
       border: 1px solid rgba(239, 68, 68, 0.2);
+      display: none;
     }
     .tab { display: none; animation: fadeIn 0.2s ease; }
     .tab.active { display: block; }
@@ -1614,7 +1615,8 @@
       const studentId = Number(document.getElementById("assign-student").value);
       const err = document.getElementById("section-error");
       err.textContent = "";
-      if (!secId || !studentId) { err.textContent = "Pick section and student."; return; }
+      err.style.display = "none";
+      if (!secId || !studentId) { err.textContent = "Pick section and student."; err.style.display = "block"; return; }
       try {
         await fetchJSON(`/sections/${secId}/students`, {
           method: "POST",
@@ -1624,6 +1626,7 @@
         document.getElementById("assign-student").value = "";
       } catch (ex) {
         err.textContent = ex.message;
+        err.style.display = "block";
       }
     }
 
@@ -1819,9 +1822,11 @@
           try {
             await saveFinalGrade(entry);
             await loadGradesTable();
-          } catch (ex) {
-            document.getElementById("grade-error").textContent = ex.message;
-          }
+      } catch (ex) {
+        const err = document.getElementById("grade-error");
+        err.textContent = ex.message;
+        err.style.display = "block";
+      }
         });
       });
       tbody.querySelectorAll(".final-delete").forEach(btn => {
@@ -2211,13 +2216,15 @@
         e.preventDefault();
         const err = document.getElementById("student-error");
         err.textContent = "";
+        err.style.display = "none";
         const last5 = document.getElementById("student-number").value.trim();
-        if (!/^\d{5}$/.test(last5)) { err.textContent = "Enter last 5 digits (numbers only)."; return; }
+        if (!/^\d{5}$/.test(last5)) { err.textContent = "Enter last 5 digits (numbers only)."; err.style.display = "block"; return; }
         const formattedNumber = `STU-${last5}`;
         const homeroomRaw = document.getElementById("student-homeroom").value.trim();
         const homeroomValid = teachersCache.some(t => (t.full_name || t.username) === homeroomRaw);
         if (homeroomRaw && !homeroomValid) {
           err.textContent = "Choose a homeroom teacher from the list.";
+          err.style.display = "block";
           return;
         }
         const payload = {
@@ -2233,7 +2240,7 @@
           await fetchJSON("/students", { method: "POST", body: JSON.stringify(payload) });
           e.target.reset();
           await refreshAll();
-        } catch (ex) { err.textContent = ex.message; }
+        } catch (ex) { err.textContent = ex.message; err.style.display = "block"; }
       });
 
       const attSection = document.getElementById("attendance-section");
@@ -2246,13 +2253,14 @@
           const err = document.getElementById("attendance-error");
           err.style.color = "#fca5a5";
           err.textContent = "";
+          err.style.display = "none";
           setTodayAttendanceDate();
           const date = document.getElementById("attendance-date").value;
           const sectionId = Number(document.getElementById("attendance-section").value) || null;
           const subjectId = Number(document.getElementById("attendance-subject").value) || null;
-          if (!date) { err.textContent = "Date missing."; return; }
+          if (!date) { err.textContent = "Date missing."; err.style.display = "block"; return; }
           const rows = Array.from(document.querySelectorAll(".attn-sheet-status"));
-          if (!rows.length) { err.textContent = "No students to save."; return; }
+          if (!rows.length) { err.textContent = "No students to save."; err.style.display = "block"; return; }
           const records = rows.map(sel => ({
             student_id: Number(sel.dataset.student),
             status: sel.value || "Present",
@@ -2269,8 +2277,9 @@
             });
             err.style.color = "#34d399";
             err.textContent = "Attendance sheet saved.";
+            err.style.display = "block";
             await refreshAll();
-          } catch (ex) { err.textContent = ex.message; }
+          } catch (ex) { err.textContent = ex.message; err.style.display = "block"; }
         });
       }
 
