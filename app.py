@@ -1203,6 +1203,13 @@ def current_teacher_name():
     return request.headers.get("X-User-Name")
 
 
+def teacher_advised_section_ids(session, teacher_id: int):
+    """Return list of section ids where the teacher is the adviser."""
+    if not teacher_id:
+        return []
+    return [sid for (sid,) in session.query(Section.id).filter(Section.adviser_id == teacher_id).all()]
+
+
 @app.route("/api/report-card", methods=["GET"])
 def report_card():
     student_id = request.args.get("student_id", type=int)
@@ -2560,6 +2567,9 @@ def list_attendance():
     session = session_or_none
     try:
         band = current_teacher_band()
+        teacher_id = current_teacher_id()
+        advised_sections = teacher_advised_section_ids(session, teacher_id) if teacher_id else []
+
         query = session.query(Attendance)
         if student_id:
             query = query.filter(Attendance.student_id == student_id)
@@ -2573,6 +2583,20 @@ def list_attendance():
                 query = query.filter(Attendance.attendance_date == parsed)
             except ValueError:
                 return error_response(400, "attendance_date must be YYYY-MM-DD")
+
+        if teacher_id:
+            allowed_subject_ids = [
+                sid for (sid,) in session.query(Subject.id).filter(or_(Subject.teacher_id == None, Subject.teacher_id == teacher_id)).all()  # noqa: E711
+            ]
+            if subject_id and subject_id not in allowed_subject_ids and section_id not in advised_sections:
+                return error_response(403, "Forbidden for this subject/section")
+            query = query.filter(
+                or_(
+                    Attendance.subject_id.in_(allowed_subject_ids),
+                    Attendance.section_id.in_(advised_sections),
+                )
+            )
+
         if band:
             records = []
             for r in query.order_by(Attendance.attendance_date.desc()).all():
@@ -2684,6 +2708,8 @@ def bulk_attendance():
             sec_obj = session.query(Section).filter_by(id=section_id).first()
             if not sec_obj:
                 return error_response(400, "section_id not found")
+            if teacher_id and sec_obj.adviser_id not in (None, teacher_id) and (not subj_obj or subj_obj.teacher_id not in (None, teacher_id)):
+                return error_response(403, "Not allowed to record for this section")
 
         saved = 0
         for rec in records:
@@ -2696,6 +2722,8 @@ def bulk_attendance():
                 continue
             if sec_obj and student.section_id != sec_obj.id:
                 # keep scoped to the section sheet
+                continue
+            if teacher_id and not sec_obj and subj_obj and subj_obj.teacher_id not in (None, teacher_id):
                 continue
             target_section = sec_obj.id if sec_obj else student.section_id
             existing = (
