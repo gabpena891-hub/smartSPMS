@@ -384,7 +384,7 @@
       <datalist id="teacher-options"></datalist>
       <p class="section-title">Directory</p>
         <table id="students-table">
-          <thead><tr><th>Student #</th><th>Name</th><th>Grade</th><th>Homeroom</th><th>Birthdate (DOB)</th><th>Action</th></tr></thead>
+          <thead><tr><th>Student #</th><th>Name</th><th>Grade</th><th>Homeroom</th><th>Birthdate (DOB)</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table>
     </section>
@@ -682,6 +682,16 @@
                 </ul>
             </div>
         </div>
+        <div class="card">
+          <h3>Students (Admin)</h3>
+          <input id="admin-student-search" class="pill-input" placeholder="Search student name or number..." style="margin-bottom:10px;">
+          <div style="max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:10px;">
+            <table id="admin-students-table">
+              <thead><tr><th>#</th><th>Name</th><th>Grade</th><th>Section</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -815,7 +825,10 @@
                         <td>${s.grade_level || "-"}</td>
                         <td>${s.homeroom_teacher || "-"}</td>
                         <td>${s.date_of_birth ? `DOB: ${s.date_of_birth}` : "-"}</td>
-                        <td><button data-id="${s.id}" class="delete-student" style="padding:6px 10px;">Delete</button></td>`;
+                        <td style="display:flex; gap:8px; flex-wrap:wrap;">
+                          <button data-id="${s.id}" class="print-report" style="padding:6px 10px;">Report PDF</button>
+                          <button data-id="${s.id}" class="delete-student" style="padding:6px 10px;">Delete</button>
+                        </td>`;
         tbody.appendChild(tr);
         const opt = document.createElement("option");
         opt.value = s.id;
@@ -835,14 +848,43 @@
           }
         };
       });
+      document.querySelectorAll(".print-report").forEach(btn => {
+        btn.onclick = () => downloadStudentReport(Number(btn.dataset.id));
+      });
+
+      // admin students table
+      const adminTable = document.querySelector("#admin-students-table tbody");
+      const adminSearch = document.getElementById("admin-student-search");
+      if (adminTable) {
+        const renderAdminStudents = (term = "") => {
+          const q = term.toLowerCase();
+          adminTable.innerHTML = "";
+          studentsCache
+            .filter(s => `${s.first_name} ${s.last_name} ${s.student_number}`.toLowerCase().includes(q))
+            .slice(0, 200)
+            .forEach(s => {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `<td>${s.student_number || "-"}</td>
+                              <td>${s.first_name} ${s.last_name}</td>
+                              <td>${s.grade_level || "-"}</td>
+                              <td>${s.section_id || "-"}</td>`;
+              adminTable.appendChild(tr);
+            });
+        };
+        renderAdminStudents();
+        if (adminSearch) {
+          adminSearch.oninput = (e) => renderAdminStudents(e.target.value);
+        }
+      }
     }
 
     async function loadSubjects() {
       const subjects = await fetchJSON("/subjects");
       const bandFilter = (currentUser?.role === "Teacher") ? teacherBand : adminBandFilter;
-      subjectsCache = bandFilter
-        ? subjects.filter(s => s.level_band === bandFilter)
-        : subjects;
+      const teacherId = currentUser?.role === "Teacher" ? currentUser.id : null;
+      subjectsCache = subjects
+        .filter(s => !bandFilter || s.level_band === bandFilter)
+        .filter(s => !teacherId || s.teacher_id === teacherId);
       const teacherLookup = Object.fromEntries(usersCache.map(u => [u.id, u.full_name || u.username]));
       const teacherSelect = document.getElementById("sub-teacher");
       if (teacherSelect) {
@@ -915,9 +957,12 @@
           return o;
         };
         sheetSelect.appendChild(mkOpt("", "Select subject", true, true));
-        subjects.forEach(sub => {
-          sheetSelect.appendChild(mkOpt(sub.name, `${sub.name} (${sub.level_band}${sub.category ? " • " + sub.category : ""}${sub.track ? " • " + sub.track : ""})`));
-        });
+        const teacherId = currentUser?.role === "Teacher" ? currentUser.id : null;
+        subjects
+          .filter(sub => !teacherId || sub.teacher_id === teacherId)
+          .forEach(sub => {
+            sheetSelect.appendChild(mkOpt(sub.name, `${sub.name} (${sub.level_band}${sub.category ? " • " + sub.category : ""}${sub.track ? " • " + sub.track : ""})`));
+          });
       }
 
       // populate grades tab subject filter
@@ -959,7 +1004,8 @@
         return;
       }
       select.appendChild(mkOpt("", `Select ${band} subject`, true, true));
-      const filtered = subjectsCache.filter(s => s.level_band === band);
+      const teacherId = currentUser?.role === "Teacher" ? currentUser.id : null;
+      const filtered = subjectsCache.filter(s => s.level_band === band).filter(s => !teacherId || s.teacher_id === teacherId);
       if (filtered.length === 0) {
         select.appendChild(mkOpt("", `No ${band} subjects available`, true, true));
         return;
@@ -1037,8 +1083,8 @@
       valueEl.value = total ? total.toFixed(2) : "";
     }
 
-    function downloadStudentReport() {
-      const studentId = Number(document.getElementById("report-student").value);
+    function downloadStudentReport(forcedId) {
+      const studentId = forcedId ?? Number(document.getElementById("report-student").value);
       const student = studentsCache.find(s => s.id === studentId);
       if (!student) { alert("Select a student."); return; }
       const grades = gradesCache.filter(g => g.student_id === studentId);
