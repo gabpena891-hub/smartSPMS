@@ -2117,10 +2117,13 @@
           e.preventDefault();
           const err = document.getElementById("section-error");
           err.textContent = "";
+          const rawName = document.getElementById("section-name").value.trim();
+          const gradeVal = document.getElementById("section-grade").value.trim();
+          const combinedName = rawName ? (gradeVal ? `Grade ${gradeVal} - ${rawName}` : rawName) : "";
           const payload = {
-            name: document.getElementById("section-name").value.trim(),
+            name: combinedName,
             level_band: document.getElementById("section-band").value || null,
-            grade_level: document.getElementById("section-grade").value || null,
+            grade_level: gradeVal || null,
             track: document.getElementById("section-track").value || null,
             adviser_id: Number(document.getElementById("section-adviser").value) || null,
           };
