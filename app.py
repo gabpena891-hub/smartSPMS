@@ -9,6 +9,7 @@ from sqlalchemy import (Column, Date, DateTime, DECIMAL, ForeignKey, Integer,
                         String, Text, Float, create_engine, func, text, case, and_, or_)
 from sqlalchemy.orm import declarative_base, relationship, scoped_session, sessionmaker
 from sqlalchemy.exc import IntegrityError
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Flask setup with CORS for local frontend (e.g., http://127.0.0.1:5500) and file://
 app = Flask(__name__, static_folder=".", static_url_path="")
@@ -27,6 +28,29 @@ engine = create_engine(db_url, pool_pre_ping=True, pool_recycle=1800)
 SessionLocal = scoped_session(sessionmaker(bind=engine))
 Base = declarative_base()
 logging.basicConfig(level=logging.INFO)
+
+# Password helpers
+def hash_password(raw: str) -> str:
+    if not raw:
+        return ""
+    return generate_password_hash(raw)
+
+
+def verify_password(stored: str, raw: str) -> bool:
+    """
+    Backward-compatible verifier: accepts legacy plaintext matches and new hashes.
+    """
+    if stored is None or raw is None:
+        return False
+    # Already a werkzeug hash
+    if stored.startswith("pbkdf2:") or stored.startswith("scrypt:") or stored.startswith("argon2:"):
+        return check_password_hash(stored, raw)
+    # Legacy plaintext fallback
+    return stored == raw
+
+
+def password_too_weak(raw: str) -> bool:
+    return not raw or len(raw) < 8
 
 def init_db():
     try:
@@ -137,9 +161,9 @@ def admin_seed():
         if provided != token:
             return error_response(403, "Forbidden")
 
-    username = "gabpena891@gmail.com"
-    password = "chin1979"
-    full_name = "Admin User"
+    username = os.environ.get("ADMIN_SEED_USERNAME", "gabpena891@gmail.com")
+    password = os.environ.get("ADMIN_SEED_PASSWORD", "chin1979")
+    full_name = os.environ.get("ADMIN_SEED_NAME", "Admin User")
 
     session_or_none = get_session()
     if isinstance(session_or_none, tuple):
@@ -152,7 +176,7 @@ def admin_seed():
             return jsonify({"message": "Admin already exists"})
         user = User(
             username=username,
-            password_hash=password,
+            password_hash=hash_password(password),
             role="Admin",
             full_name=full_name,
             approved=1,
@@ -640,12 +664,15 @@ def admin_system_repair():
     try:
         admin_exists = session.query(User).count() > 0
         if not admin_exists:
+            admin_username = os.environ.get("ADMIN_SEED_USERNAME", "Gabriel_Pena")
+            admin_password = os.environ.get("ADMIN_SEED_PASSWORD", "chin1979")
+            admin_fullname = os.environ.get("ADMIN_SEED_NAME", "Gabriel Pena")
             session.add(
                 User(
-                    username="Gabriel_Pena",
-                    password_hash="chin1979",
+                    username=admin_username,
+                    password_hash=hash_password(admin_password),
                     role="Admin",
-                    full_name="Gabriel Pena",
+                    full_name=admin_fullname,
                     approved=1,
                 )
             )
@@ -1196,12 +1223,10 @@ def login():
     session = session_or_none
 
     try:
-        user = (
-            session.query(User)
-            .filter(User.username == username, User.password_hash == password)
-            .first()
-        )
+        user = session.query(User).filter(User.username == username).first()
         if not user:
+            return error_response(401, "Invalid credentials")
+        if not verify_password(user.password_hash, password):
             return error_response(401, "Invalid credentials")
         if user.role == "Teacher" and not user.approved:
             return error_response(403, "Account pending admin approval")
@@ -1785,9 +1810,11 @@ def create_user():
         exists = session.query(User).filter_by(username=data["username"]).first()
         if exists:
             return error_response(409, "Username already exists")
+        if password_too_weak(data.get("password", "")):
+            return error_response(400, "Password must be at least 8 characters")
         user = User(
             username=data["username"],
-            password_hash=data["password"],  # plaintext for demo
+            password_hash=hash_password(data["password"]),
             role=data["role"],
             full_name=data["full_name"],
             approved=1,
@@ -1827,7 +1854,9 @@ def update_user(user_id: int):
         if "full_name" in data and data["full_name"]:
             user.full_name = data["full_name"]
         if "password" in data and data["password"]:
-            user.password_hash = data["password"]  # plaintext for demo
+            if password_too_weak(data["password"]):
+                return error_response(400, "Password must be at least 8 characters")
+            user.password_hash = hash_password(data["password"])
         if "approved" in data:
             user.approved = 1 if data["approved"] else 0
         if "teacher_band" in data:
@@ -1889,9 +1918,11 @@ def signup_teacher():
         exists = session.query(User).filter_by(username=data["username"]).first()
         if exists:
             return error_response(409, "Username already exists")
+        if password_too_weak(data.get("password", "")):
+            return error_response(400, "Password must be at least 8 characters")
         user = User(
             username=data["username"].strip(),
-            password_hash=data["password"],
+            password_hash=hash_password(data["password"]),
             role="Teacher",
             full_name=data["full_name"].strip(),
             approved=0,
@@ -1931,10 +1962,12 @@ def parent_signup():
         exists = session.query(User).filter_by(username=data["username"]).first()
         if exists:
             return error_response(409, "Username already exists")
+        if password_too_weak(data.get("password", "")):
+            return error_response(400, "Password must be at least 8 characters")
 
         user = User(
             username=data["username"],
-            password_hash=data["password"],  # plaintext for demo
+            password_hash=hash_password(data["password"]),
             role="Parent",
             full_name=data["full_name"],
         )

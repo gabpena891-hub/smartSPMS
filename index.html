@@ -13,14 +13,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: rgba(30, 41, 59, 0.75);
-      --border: rgba(255, 255, 255, 0.08);
-      --accent: #6366f1;
-      --accent-hover: #4f46e5;
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --input-bg: rgba(15, 23, 42, 0.5);
+      --bg: #0a0f1d;
+      --card-bg: rgba(17, 28, 48, 0.8);
+      --border: rgba(255, 255, 255, 0.06);
+      --accent: #22d3ee;
+      --accent-hover: #0ea5e9;
+      --warm: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #a5b4c5;
+      --input-bg: rgba(11, 18, 32, 0.7);
     }
     * { box-sizing: border-box; }
     body {
@@ -28,9 +29,9 @@
       font-family: "Inter", sans-serif;
       background-color: var(--bg);
       background-image: 
-        radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-        radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-        radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+        radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.12), transparent 30%), 
+        radial-gradient(circle at 80% 0%, rgba(245, 158, 11, 0.12), transparent 32%),
+        radial-gradient(circle at 65% 60%, rgba(14, 165, 233, 0.1), transparent 28%);
       color: var(--text);
       min-height: 100vh;
       display: flex;
@@ -40,7 +41,7 @@
     }
 
     .card {
-      background: var(--card-bg);
+      background: linear-gradient(160deg, rgba(17, 28, 48, 0.92), rgba(12, 20, 35, 0.92));
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border);
@@ -48,7 +49,7 @@
       width: 100%;
       max-width: 420px;
       padding: 48px 40px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 25px 70px -12px rgba(0, 0, 0, 0.6);
       text-align: center;
       position: relative;
       overflow: hidden;
@@ -65,10 +66,10 @@
       margin-bottom: 24px;
       display: inline-flex;
       padding: 12px;
-      background: rgba(99, 102, 241, 0.1);
+      background: rgba(34, 211, 238, 0.12);
       border-radius: 18px;
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      box-shadow: 0 0 25px rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      box-shadow: 0 0 25px rgba(14, 165, 233, 0.25);
     }
 
     h1 { margin: 0 0 8px; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; }
@@ -100,18 +101,19 @@
       outline: none;
       transition: all 0.2s ease;
       font-family: inherit;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     }
     input::placeholder { color: rgba(148, 163, 184, 0.5); }
     input:focus {
       border-color: var(--accent);
       background: rgba(15, 23, 42, 0.8);
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+      box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.2);
     }
 
     button.primary-btn {
       width: 100%;
       padding: 14px;
-      background: var(--accent);
+      background: linear-gradient(120deg, var(--accent), #67e8f9);
       border: none;
       border-radius: 12px;
       color: white;
@@ -122,9 +124,9 @@
       margin-top: 10px;
     }
     button.primary-btn:hover { 
-      background: var(--accent-hover); 
+      background: linear-gradient(120deg, #67e8f9, var(--accent)); 
       transform: translateY(-1px);
-      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3); 
+      box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35); 
     }
 
     /* Tabs for Signup */
@@ -180,11 +182,12 @@
     .info-badge {
       display: inline-block;
       font-size: 11px;
-      background: rgba(255,255,255,0.05);
+      background: rgba(245, 158, 11, 0.15);
       padding: 4px 8px;
       border-radius: 6px;
-      color: var(--muted);
+      color: #fef3c7;
       margin-top: 8px;
+      border: 1px solid rgba(245, 158, 11, 0.25);
     }
 
     .hidden { display: none; }

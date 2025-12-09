@@ -14,14 +14,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0f172a;
-      --sidebar: #1e293b;
-      --card: #1e293b;
-      --border: rgba(255, 255, 255, 0.08);
-      --accent: #6366f1;
-      --accent-hover: #4f46e5;
-      --muted: #94a3b8;
-      --text: #f1f5f9;
+      --bg: #0a0f1d;
+      --sidebar: #0f172a;
+      --card: #111c30;
+      --border: rgba(255, 255, 255, 0.06);
+      --accent: #22d3ee;          /* teal */
+      --accent-hover: #0ea5e9;
+      --highlight: #f59e0b;       /* warm complement */
+      --muted: #a5b4c5;
+      --text: #e2e8f0;
       --danger: #ef4444;
       --success: #10b981;
     }
@@ -36,16 +37,23 @@
     body {
       margin: 0;
       font-family: "Inter", sans-serif;
-      background: var(--bg);
+      background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.08), transparent 30%),
+                  radial-gradient(circle at 80% 0%, rgba(245, 158, 11, 0.08), transparent 32%),
+                  var(--bg);
       color: var(--text);
       display: grid;
       grid-template-columns: 260px 1fr;
       min-height: 100vh;
     }
 
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
     /* Sidebar Styling */
     aside {
-      background: var(--sidebar);
+      background: linear-gradient(180deg, #0f172a 0%, #0c1222 100%);
       border-right: 1px solid var(--border);
       padding: 32px 20px;
       display: flex;
@@ -55,6 +63,7 @@
       top: 0;
       height: 100vh;
       overflow-y: auto;
+      box-shadow: 6px 0 24px rgba(0, 0, 0, 0.35);
     }
     .brand { 
       font-size: 20px; 
@@ -92,13 +101,13 @@
       font-family: inherit;
     }
     nav button:hover {
-      background: rgba(255,255,255,0.03);
+      background: rgba(34, 211, 238, 0.12);
       color: white;
     }
     nav button.active {
-      background: var(--accent);
-      color: white;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      background: linear-gradient(120deg, var(--accent), #67e8f9);
+      color: #0b1220;
+      box-shadow: 0 8px 24px rgba(14, 165, 233, 0.35);
     }
     nav button[onclick="logout()"] {
       margin-top: auto;
@@ -132,15 +141,18 @@
     /* Cards */
     .cards { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 32px; }
     .card {
-      background: var(--card);
+      background: linear-gradient(145deg, #111c30 0%, #0f192a 100%);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 24px;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(6px);
     }
     .card:hover {
-      border-color: rgba(255,255,255,0.15);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      border-color: rgba(34, 211, 238, 0.35);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.4);
+      transform: translateY(-2px);
     }
     .card h3 { 
       margin: 0 0 12px; 
@@ -157,10 +169,11 @@
     
     /* Charts */
     canvas { 
-      background: rgba(15, 23, 42, 0.5); 
+      background: rgba(15, 23, 42, 0.35); 
       border-radius: 12px; 
       padding: 16px; 
       width: 100% !important;
+      border: 1px solid var(--border);
     }
 
     /* Tables */
@@ -168,11 +181,17 @@
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      background: var(--card);
+      background: rgba(17, 28, 48, 0.7);
       border: 1px solid var(--border);
       border-radius: 16px;
       overflow: hidden;
       margin-top: 16px;
+    }
+    table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      backdrop-filter: blur(6px);
     }
     th, td { 
       padding: 16px 20px; 
@@ -189,7 +208,7 @@
       letter-spacing: 0.5px;
     }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.02); }
+    tr:hover td { background: rgba(14, 165, 233, 0.06); }
     
     /* Forms */
     form {
@@ -197,21 +216,66 @@
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
       margin-top: 20px;
-      background: rgba(30, 41, 59, 0.5);
+      background: rgba(17, 28, 48, 0.65);
       padding: 24px;
       border-radius: 16px;
       border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
     }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin: 0 0 12px;
+    }
+    .toolbar input, .toolbar select {
+      max-width: 240px;
+      background: #0b1220;
+    }
+
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(17, 28, 48, 0.9);
+      color: var(--text);
+      box-shadow: 0 14px 40px rgba(0,0,0,0.45);
+      min-width: 240px;
+      font-size: 14px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: auto;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast.success { border-color: rgba(16, 185, 129, 0.4); color: #bbf7d0; }
+    .toast.error { border-color: rgba(239, 68, 68, 0.4); color: #fecdd3; }
+    .toast.info { border-color: rgba(34, 211, 238, 0.35); color: #e0f2fe; }
     
     input, select, textarea {
       padding: 12px 16px;
       border-radius: 10px;
       border: 1px solid var(--border);
-      background: #0f172a;
+      background: #0b1220;
       color: white;
       font-size: 14px;
       font-family: inherit;
-      transition: border 0.2s, box-shadow 0.2s;
+      transition: border 0.2s, box-shadow 0.2s, background 0.2s;
       width: 100%;
     }
     input:focus, select:focus, textarea:focus {
@@ -221,18 +285,19 @@
     textarea { min-height: 100px; resize: vertical; }
     
     button {
-      background: var(--accent);
-      color: white;
+      background: linear-gradient(120deg, var(--accent), #67e8f9);
+      color: #0b1220;
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      font-weight: 600;
+      font-weight: 700;
       padding: 12px 20px;
       font-size: 14px;
       transition: all 0.2s;
       font-family: inherit;
+      box-shadow: 0 12px 30px rgba(14, 165, 233, 0.3);
     }
-    button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    button:hover { background: linear-gradient(120deg, #67e8f9, var(--accent)); transform: translateY(-1px); }
     
     /* Specific Button Styles */
     .delete-student {
@@ -281,12 +346,13 @@
        min-width: 20px;
        padding: 2px 8px;
        border-radius: 999px;
-       background: #f97316;
-       color: white;
+       background: var(--highlight);
+       color: #0b1220;
        font-size: 11px;
-       font-weight: 700;
+       font-weight: 800;
        vertical-align: middle;
        margin-left: 8px;
+       box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
      }
 
     /* Responsive */
@@ -311,6 +377,7 @@
   </style>
 </head>
 <body>
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
   <aside>
     <div class="brand" style="display:flex; align-items:center; gap:12px;">
       <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -383,6 +450,12 @@
       </form>
       <datalist id="teacher-options"></datalist>
       <p class="section-title">Directory</p>
+      <div class="toolbar" aria-label="Student filters">
+        <input id="students-filter" class="pill-input" placeholder="Search name or student #">
+        <select id="students-grade-filter">
+          <option value="">All grades</option>
+        </select>
+      </div>
         <table id="students-table">
           <thead><tr><th>Student #</th><th>Name</th><th>Grade</th><th>Homeroom</th><th>Birthdate (DOB)</th><th>Actions</th></tr></thead>
         <tbody></tbody>
@@ -714,6 +787,30 @@
     let gradeSheetSubject = null;
     let gradeSheetRowsData = {}; // {studentId: {activityId: raw}}
     let gradeSheetSubjectWeights = { ww: 0.3, pt: 0.5, qa: 0.2 };
+    let studentSearchInput = null;
+    let studentGradeFilter = null;
+
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toast-container");
+      if (!container || !message) return;
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add("show"));
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 200);
+      }, 3200);
+    }
+
+    function debounce(fn, delay = 200) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), delay);
+      };
+    }
 
     function classifyGradeLevel(gradeStr) {
       if (!gradeStr) return null;
@@ -784,6 +881,55 @@
       return data;
     }
 
+    function getStudentsForTable(source) {
+      const gradeSectionFilter = Number(document.getElementById("grade-section")?.value) || null;
+      const searchTerm = (studentSearchInput?.value || "").trim().toLowerCase();
+      const gradeFilterVal = (studentGradeFilter?.value || "").trim();
+      return source
+        .filter(s => !gradeSectionFilter || s.section_id === gradeSectionFilter)
+        .filter(s => !gradeFilterVal || String(s.grade_level || "") === gradeFilterVal)
+        .filter(s => {
+          if (!searchTerm) return true;
+          const hay = `${s.student_number || ""} ${s.first_name} ${s.last_name}`.toLowerCase();
+          return hay.includes(searchTerm);
+        });
+    }
+
+    function renderStudentsTable(source) {
+      const tbody = document.querySelector("#students-table tbody");
+      if (!tbody) return;
+      const filtered = getStudentsForTable(source);
+      tbody.innerHTML = "";
+      filtered.forEach((s) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${s.student_number || "-"}</td>
+                        <td>${s.first_name} ${s.middle_name ? s.middle_name + ". " : ""}${s.last_name}</td>
+                        <td>${s.grade_level || "-"}</td>
+                        <td>${s.homeroom_teacher || "-"}</td>
+                        <td>${s.date_of_birth ? "DOB: " + s.date_of_birth : "-"}</td>
+                        <td style="display:flex; gap:8px; flex-wrap:wrap;">
+                          <button data-id="${s.id}" class="print-report" style="padding:6px 10px;">Report PDF</button>
+                          <button data-id="${s.id}" class="delete-student" style="padding:6px 10px;">Delete</button>
+                        </td>`;
+        tbody.appendChild(tr);
+      });
+      document.querySelectorAll(".delete-student").forEach(btn => {
+        btn.onclick = async () => {
+          if (!confirm("Delete this student (and related records)?")) return;
+          try {
+            await fetchJSON(`/students/${btn.dataset.id}`, { method: "DELETE" });
+            showToast("Student removed", "info");
+            await refreshAll();
+          } catch (ex) {
+            showToast(ex.message || "Failed to delete student.", "error");
+          }
+        };
+      });
+      document.querySelectorAll(".print-report").forEach(btn => {
+        btn.onclick = () => downloadStudentReport(Number(btn.dataset.id));
+      });
+    }
+
     async function loadDashboard() {
       const stats = await fetchJSON("/dashboard-stats");
       const totals = stats.totals;
@@ -805,7 +951,18 @@
       studentsCache = bandFilter
         ? students.filter(s => classifyGradeLevel(s.grade_level) === bandFilter)
         : students;
-      const tbody = document.querySelector("#students-table tbody");
+      const gradeSectionFilter = Number(document.getElementById("grade-section")?.value) || null;
+      const studentsForUI = gradeSectionFilter
+        ? studentsCache.filter(s => s.section_id === gradeSectionFilter)
+        : studentsCache;
+      if (studentGradeFilter) {
+        const grades = Array.from(new Set(studentsCache.map(s => s.grade_level).filter(Boolean)))
+          .sort((a, b) => Number(a) - Number(b));
+        studentGradeFilter.innerHTML = `<option value="">All grades</option>`;
+        grades.forEach(g => {
+          studentGradeFilter.innerHTML += `<option value="${g}">Grade ${g}</option>`;
+        });
+      }
       const selectGrade = document.getElementById("grade-student");
       const selectAtt = document.getElementById("attendance-student");
       const selectTrend = document.getElementById("trend-student");
@@ -817,42 +974,15 @@
       selectAtt.appendChild(defaultOption("Select student"));
       selectTrend.appendChild(defaultOption("Select student"));
       if (selectReport) selectReport.appendChild(defaultOption("Select student"));
-      tbody.innerHTML = "";
-      const gradeSectionFilter = Number(document.getElementById("grade-section")?.value) || null;
-      const filteredStudents = students.filter(s => !gradeSectionFilter || s.section_id === gradeSectionFilter);
+      const filteredStudents = studentsForUI;
       filteredStudents.forEach((s) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${s.student_number || "-"}</td>
-                        <td>${s.first_name} ${s.middle_name ? s.middle_name + ". " : ""}${s.last_name}</td>
-                        <td>${s.grade_level || "-"}</td>
-                        <td>${s.homeroom_teacher || "-"}</td>
-                        <td>${s.date_of_birth ? `DOB: ${s.date_of_birth}` : "-"}</td>
-                        <td style="display:flex; gap:8px; flex-wrap:wrap;">
-                          <button data-id="${s.id}" class="print-report" style="padding:6px 10px;">Report PDF</button>
-                          <button data-id="${s.id}" class="delete-student" style="padding:6px 10px;">Delete</button>
-                        </td>`;
-        tbody.appendChild(tr);
         const opt = document.createElement("option");
         opt.value = s.id;
         opt.textContent = `${s.first_name} ${s.last_name}${s.grade_level ? " (G" + s.grade_level + ")" : ""}`;
         [selectGrade, selectAtt, selectTrend].forEach(sel => sel.appendChild(opt.cloneNode(true)));
         if (selectReport) selectReport.appendChild(opt.cloneNode(true));
       });
-      // wire delete buttons
-      document.querySelectorAll(".delete-student").forEach(btn => {
-        btn.onclick = async () => {
-          if (!confirm("Delete this student (and related records)?")) return;
-          try {
-            await fetchJSON(`/students/${btn.dataset.id}`, { method: "DELETE" });
-            await refreshAll();
-          } catch (ex) {
-            alert(ex.message || "Failed to delete student.");
-          }
-        };
-      });
-      document.querySelectorAll(".print-report").forEach(btn => {
-        btn.onclick = () => downloadStudentReport(Number(btn.dataset.id));
-      });
+      renderStudentsTable(studentsCache);
 
       // admin students table
       const adminTable = document.querySelector("#admin-students-table tbody");
@@ -1293,8 +1423,10 @@
             await fetchJSON(`/sections/${btn.dataset.id}`, { method: "DELETE" });
             await loadSections();
             await refreshAll();
+            showToast("Section deleted", "info");
           } catch (ex) {
             document.getElementById("section-error").textContent = ex.message;
+            showToast(ex.message, "error");
           }
         });
       });
@@ -1367,8 +1499,10 @@
         });
         await refreshAll();
         document.getElementById("assign-student").value = "";
+        showToast("Student assigned to section", "success");
       } catch (ex) {
         err.textContent = ex.message;
+        showToast(ex.message, "error");
       }
     }
 
@@ -1413,9 +1547,11 @@
       try {
         await fetchJSON("/grades/bulk", { method: "POST", body: JSON.stringify(payloads) });
         document.getElementById("sheet-status").textContent = "Saved.";
+        showToast("Grade sheet saved", "success");
         await refreshAll();
       } catch (ex) {
         sheetError.textContent = ex.message;
+        showToast(ex.message, "error");
       }
     }
 
@@ -1872,7 +2008,7 @@
           try {
             await fetchJSON(`/users/${sel.dataset.id}`, { method: "PUT", body: JSON.stringify({ role: sel.value }) });
           } catch (ex) {
-            alert(ex.message);
+            showToast(ex.message, "error");
             await loadUsers();
           }
         };
@@ -1883,7 +2019,7 @@
             await fetchJSON(`/users/${sel.dataset.id}`, { method: "PUT", body: JSON.stringify({ teacher_band: sel.value || null }) });
             await loadUsers();
           } catch (ex) {
-            alert(ex.message);
+            showToast(ex.message, "error");
             await loadUsers();
           }
         };
@@ -1894,7 +2030,7 @@
             await fetchJSON(`/users/${btn.dataset.id}`, { method: "PUT", body: JSON.stringify({ approved: true }) });
             await loadUsers();
           } catch (ex) {
-            alert(ex.message);
+            showToast(ex.message, "error");
           }
         };
       });
@@ -1905,7 +2041,7 @@
             await fetchJSON(`/users/${btn.dataset.id}`, { method: "DELETE" });
             await loadUsers();
           } catch (ex) {
-            alert(ex.message);
+            showToast(ex.message, "error");
           }
         };
       });
@@ -1937,8 +2073,9 @@
         try {
           await fetchJSON("/students", { method: "POST", body: JSON.stringify(payload) });
           e.target.reset();
+          showToast("Student added", "success");
           await refreshAll();
-        } catch (ex) { err.textContent = ex.message; }
+        } catch (ex) { err.textContent = ex.message; showToast(ex.message, "error"); }
       });
 
       document.getElementById("attendance-form").addEventListener("submit", async (e) => {
@@ -1961,8 +2098,9 @@
           setTodayAttendanceDate();
           err.style.color = "#34d399";
           err.textContent = "Attendance recorded.";
+          showToast("Attendance recorded", "success");
           await refreshAll();
-        } catch (ex) { err.textContent = ex.message; }
+        } catch (ex) { err.textContent = ex.message; showToast(ex.message, "error"); }
       });
 
       // Communications form
@@ -2019,7 +2157,8 @@
           await loadDashboard();
           localStorage.setItem("spms_comms_seen_ts", new Date().toISOString());
           updateCommsNotifications([]);
-        } catch (ex) { err.textContent = ex.message; }
+          showToast("Message sent", "success");
+        } catch (ex) { err.textContent = ex.message; showToast(ex.message, "error"); }
       });
 
       document.getElementById("user-form").addEventListener("submit", async (e) => {
@@ -2036,8 +2175,9 @@
         try {
           await fetchJSON("/users", { method: "POST", body: JSON.stringify(payload) });
           e.target.reset();
+          showToast("User created", "success");
           await loadUsers();
-        } catch (ex) { err.textContent = ex.message; }
+        } catch (ex) { err.textContent = ex.message; showToast(ex.message, "error"); }
       });
 
       const subjectForm = document.getElementById("subject-form");
@@ -2066,7 +2206,8 @@
             }
             resetSubjectForm();
             await loadSubjects();
-          } catch (ex) { err.textContent = ex.message; }
+            showToast("Subject saved", "success");
+          } catch (ex) { err.textContent = ex.message; showToast(ex.message, "error"); }
         });
         document.getElementById("sub-cancel").addEventListener("click", () => {
           resetSubjectForm();
@@ -2131,8 +2272,9 @@
           try {
             await fetchJSON("/sections", { method: "POST", body: JSON.stringify(payload) });
             sectionForm.reset();
+            showToast("Section added", "success");
             await refreshAll();
-          } catch (ex) { err.textContent = ex.message; }
+          } catch (ex) { err.textContent = ex.message; showToast(ex.message, "error"); }
         });
       }
 
@@ -2271,6 +2413,12 @@
 
       setTodayAttendanceDate();
       applyRoleVisibility(user.role);
+
+      studentSearchInput = document.getElementById("students-filter");
+      studentGradeFilter = document.getElementById("students-grade-filter");
+      const reRenderStudents = debounce(() => renderStudentsTable(studentsCache), 150);
+      if (studentSearchInput) studentSearchInput.addEventListener("input", reRenderStudents);
+      if (studentGradeFilter) studentGradeFilter.addEventListener("change", reRenderStudents);
 
       document.querySelectorAll("nav button[data-tab]").forEach(btn => {
         btn.addEventListener("click", () => switchTab(btn.dataset.tab));
