@@ -1065,6 +1065,19 @@ def parse_band_from_grade(grade_str: str):
     return None
 
 
+def parse_grade_number(grade_str: str):
+    """Extract numeric grade level (e.g., 'Grade 9' -> 9)."""
+    if not grade_str:
+        return None
+    m = re.search(r"(\d+)", str(grade_str))
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except ValueError:
+        return None
+
+
 def current_teacher_band():
     role = request.headers.get("X-User-Role")
     if role != "Teacher":
@@ -2181,9 +2194,22 @@ def assign_students_to_section(section_id: int):
         section = session.query(Section).filter_by(id=section_id).first()
         if not section:
             return error_response(404, "Section not found")
-        session.query(Student).filter(Student.id.in_(ids)).update(
-            {Student.section_id: section_id}, synchronize_session=False
-        )
+        sec_grade_num = parse_grade_number(section.grade_level)
+        valid_ids = []
+        for sid in ids:
+            st = session.query(Student).filter(Student.id == sid).first()
+            if not st:
+                session.rollback()
+                return error_response(404, f"Student {sid} not found")
+            stu_grade_num = parse_grade_number(st.grade_level)
+            if sec_grade_num and stu_grade_num and stu_grade_num != sec_grade_num:
+                session.rollback()
+                return error_response(400, f"Student grade {stu_grade_num} does not match section grade {sec_grade_num}")
+            valid_ids.append(sid)
+        if valid_ids:
+            session.query(Student).filter(Student.id.in_(valid_ids)).update(
+                {Student.section_id: section_id}, synchronize_session=False
+            )
         session.commit()
         return jsonify({"message": "Students assigned", "section_id": section_id, "count": len(ids)})
     except Exception as exc:
