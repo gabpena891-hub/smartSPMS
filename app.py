@@ -1085,6 +1085,63 @@ def current_teacher_id():
         return None
 
 
+@app.route("/api/report-card", methods=["GET"])
+def report_card():
+    student_id = request.args.get("student_id", type=int)
+    if not student_id:
+        return error_response(400, "student_id required")
+
+    session_or_none = get_session()
+    if isinstance(session_or_none, tuple):
+        session, exc = session_or_none
+        return error_response(500, "Database connection failed", str(exc))
+    session = session_or_none
+    try:
+        student = session.query(Student).filter_by(id=student_id).first()
+        if not student:
+            return error_response(404, "Student not found")
+
+        # basic access control: Admin can view all; Teacher only if same band
+        role = request.headers.get("X-User-Role")
+        band = parse_band_from_grade(student.grade_level)
+        if role == "Teacher":
+            teacher_band = current_teacher_band()
+            if teacher_band and band and teacher_band != band:
+                return error_response(403, "Forbidden for this student band")
+
+        grades = session.query(Grade).filter(Grade.student_id == student_id).all()
+        by_subject = {}
+        for g in grades:
+            by_subject.setdefault(g.subject, []).append(g)
+        subjects_summary = []
+        for subj, gs in by_subject.items():
+            # average grade_value
+            vals = [float(x.grade_value) for x in gs if x.grade_value is not None]
+            avg = sum(vals) / len(vals) if vals else 0
+            subjects_summary.append(
+                {
+                    "subject": subj,
+                    "average": round(avg, 2),
+                    "entries": len(gs),
+                }
+            )
+        return jsonify(
+            {
+                "student": {
+                    "id": student.id,
+                    "name": f"{student.first_name} {student.last_name}",
+                    "grade_level": student.grade_level,
+                    "section_id": student.section_id,
+                },
+                "subjects": subjects_summary,
+            }
+        )
+    except Exception as exc:
+        return error_response(500, "Unexpected error", str(exc))
+    finally:
+        session.close()
+
+
 # Create missing tables (Communications, Subjects) without touching existing ones
 try:
     Base.metadata.create_all(

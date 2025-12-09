@@ -451,8 +451,7 @@
             <button id="grade-refresh" type="button" style="background: var(--accent); border:none; padding:10px 16px; border-radius:10px; color:white;">Refresh</button>
           </div>
           <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
-            <select id="report-student" style="min-width:180px;"></select>
-            <button id="grade-report-btn" type="button">Download Student PDF</button>
+            <button id="grade-report-btn" type="button">Download Report Card (selected student)</button>
           </div>
           <div id="grade-status" style="font-size:12px; color: var(--muted); margin-bottom:8px;"></div>
           <table id="grades-table">
@@ -1084,35 +1083,38 @@
     }
 
     function downloadStudentReport(forcedId) {
-      const studentId = forcedId ?? Number(document.getElementById("report-student").value);
+      const studentId = forcedId ?? Number(document.getElementById("grade-student")?.value);
       const student = studentsCache.find(s => s.id === studentId);
       if (!student) { alert("Select a student."); return; }
-      const grades = gradesCache.filter(g => g.student_id === studentId);
-      const rows = grades.map(g => `<tr><td>${g.subject}</td><td>${g.assessment}</td><td>${g.grade_value}</td><td>${g.recorded_on}</td></tr>`).join("");
-      const html = `
-        <html><head><title>Grades - ${student.first_name} ${student.last_name}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h2 { margin: 0 0 8px; }
-          table { border-collapse: collapse; width: 100%; margin-top: 12px; }
-          th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-          th { background: #f4f4f4; }
-        </style>
-        </head><body>
-        <h2>Student Grades</h2>
-        <div><strong>Name:</strong> ${student.first_name} ${student.last_name}</div>
-        <div><strong>Grade Level:</strong> ${student.grade_level || "-"}</div>
-        <table>
-          <thead><tr><th>Subject</th><th>Assessment</th><th>Grade</th><th>Date</th></tr></thead>
-          <tbody>${rows || "<tr><td colspan='4'>No grades yet.</td></tr>"}</tbody>
-        </table>
-        </body></html>`;
-      const win = window.open("", "_blank");
-      if (!win) { alert("Popup blocked. Allow popups to download PDF/print."); return; }
-      win.document.write(html);
-      win.document.close();
-      win.focus();
-      win.print();
+      fetchJSON(`/report-card?student_id=${studentId}`)
+        .then(rc => {
+          const rows = (rc.subjects || []).map(g => `<tr><td>${g.subject}</td><td>${g.average}</td><td>${g.entries}</td></tr>`).join("");
+          const html = `
+            <html><head><title>Report Card - ${student.first_name} ${student.last_name}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 24px; }
+              h2 { margin: 0 0 8px; }
+              table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+              th { background: #f4f4f4; }
+            </style>
+            </head><body>
+            <h2>Report Card</h2>
+            <div><strong>Name:</strong> ${student.first_name} ${student.last_name}</div>
+            <div><strong>Grade Level:</strong> ${student.grade_level || "-"}</div>
+            <table>
+              <thead><tr><th>Subject</th><th>Average %</th><th>Entries</th></tr></thead>
+              <tbody>${rows || "<tr><td colspan='3'>No grades yet.</td></tr>"}</tbody>
+            </table>
+            </body></html>`;
+          const win = window.open("", "_blank");
+          if (!win) { alert("Popup blocked. Allow popups to download PDF/print."); return; }
+          win.document.write(html);
+          win.document.close();
+          win.focus();
+          win.print();
+        })
+        .catch(err => alert(err.message || "Failed to load report card"));
     }
 
     function addGradeSheetActivity() {
