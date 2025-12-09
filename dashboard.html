@@ -387,6 +387,16 @@
           <thead><tr><th>Student #</th><th>Name</th><th>Grade</th><th>Homeroom</th><th>Birthdate (DOB)</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table>
+      <div id="admin-students-panel" class="card" style="margin-top:16px; display:none;">
+        <h3>Students (Admin)</h3>
+        <input id="admin-student-search" class="pill-input" placeholder="Search student name or number..." style="margin-bottom:10px;">
+        <div style="max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:10px;">
+          <table id="admin-students-table">
+            <thead><tr><th>#</th><th>Name</th><th>Grade</th><th>Section</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <section class="tab" id="tab-sections">
@@ -680,16 +690,6 @@
                     <li>Review communications for escalations</li>
                 </ul>
             </div>
-        </div>
-        <div class="card">
-          <h3>Students (Admin)</h3>
-          <input id="admin-student-search" class="pill-input" placeholder="Search student name or number..." style="margin-bottom:10px;">
-          <div style="max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:10px;">
-            <table id="admin-students-table">
-              <thead><tr><th>#</th><th>Name</th><th>Grade</th><th>Section</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
         </div>
       </div>
     </section>
@@ -2252,6 +2252,8 @@
         const section = document.getElementById(`tab-${tab}`);
         if (section) section.style.display = "none";
       });
+      const adminPanel = document.getElementById("admin-students-panel");
+      if (adminPanel) adminPanel.style.display = role === "Admin" ? "block" : "none";
       // For parents, make read-only tables still visible
       if (role === "Parent") {
         // allow switching only overview, trends, comms
