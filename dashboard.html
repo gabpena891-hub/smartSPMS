@@ -55,6 +55,10 @@
       top: 0;
       height: 100vh;
       overflow-y: auto;
+      overflow-x: hidden;
+      width: 240px;
+      min-width: 240px;
+      max-width: 240px;
     }
     .brand { 
       font-size: 18px; 
@@ -76,7 +80,7 @@
       border-radius: 50%;
       box-shadow: 0 0 12px var(--accent);
     }
-    nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: hidden; }
     nav button {
       width: 100%;
       color: var(--muted);
@@ -93,6 +97,9 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     nav button:hover {
       background: rgba(255,255,255,0.05);
@@ -441,19 +448,6 @@
       animation: spin 1s linear infinite;
     }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-    /* Table Container for horizontal scroll */
-    .table-container {
-      width: 100%;
-      overflow-x: auto;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-    }
-    .table-container table {
-      margin-top: 0;
-      border: none;
-      border-radius: 0;
-    }
   </style>
 </head>
 <body>
