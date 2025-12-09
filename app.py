@@ -322,6 +322,27 @@ def admin_patch_subject_weights():
         return error_response(500, "Patch failed", str(exc))
 
 
+@app.route("/api/admin/patch-subjects-teacher", methods=["GET"])
+def patch_subjects_teacher():
+    # Protect with ADMIN_INIT_TOKEN if set
+    token = os.environ.get("ADMIN_INIT_TOKEN")
+    if token:
+        provided = request.headers.get("X-Admin-Init-Token") or request.args.get("token")
+        if provided != token:
+            return error_response(403, "Forbidden")
+    try:
+        with engine.begin() as conn:
+            check_sql = text("SELECT column_name FROM information_schema.columns WHERE table_name='subjects' AND column_name='teacher_id'")
+            exists = conn.execute(check_sql).scalar()
+            if not exists:
+                conn.execute(text("ALTER TABLE subjects ADD COLUMN teacher_id INTEGER"))
+                return jsonify({"message": "Added teacher_id to subjects table"})
+            else:
+                return jsonify({"message": "teacher_id already exists"})
+    except Exception as e:
+        return error_response(500, str(e))
+
+
 @app.route("/api/admin/patch-grades-schema", methods=["POST", "GET"])
 def admin_patch_grades_schema():
     """Add raw_score, max_score, component columns if missing."""
