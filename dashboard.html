@@ -153,7 +153,7 @@
     .card .value { font-size: 32px; font-weight: 700; color: white; letter-spacing: -0.03em; }
 
     /* Grid Layouts */
-    .grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: 32px; }
+    .grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); margin-bottom: 32px; }
     
     /* Charts */
     canvas { 
@@ -180,6 +180,7 @@
       border: none;
       border-radius: 0;
       margin-top: 0;
+      min-width: 600px; /* Ensure table doesn't get too squashed */
     }
     th, td { 
       padding: 16px 20px; 
@@ -202,7 +203,7 @@
     /* Forms */
     form {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 16px;
       margin-top: 20px;
       background: rgba(30, 41, 59, 0.5);
