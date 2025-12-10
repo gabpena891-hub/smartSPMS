@@ -2982,6 +2982,8 @@ def auto_generate_schedule():
     allow_saturday = bool(data.get("allow_saturday", False))
     if not section_id:
         return error_response(400, "section_id is required")
+    # Make sure subjects exist (fresh DB safety)
+    ensure_subjects_catalog()
     session_or_none = get_session()
     if isinstance(session_or_none, tuple):
         session, exc = session_or_none
@@ -3014,6 +3016,8 @@ def auto_generate_schedule():
         )
 
         subjects = subjects_for_section(session, section)
+        if not subjects:
+            return error_response(400, f"No subjects available for section grade {section.grade_level}")
         slots = generate_slots(include_saturday=allow_saturday)
         # Organize slots by day for easier contiguous search
         slots_by_day = {}
