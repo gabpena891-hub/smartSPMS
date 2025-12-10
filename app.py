@@ -138,6 +138,64 @@ def ensure_attendance_schema():
 # Try to patch schema early to avoid query crashes
 ensure_section_schema()
 ensure_attendance_schema()
+ 
+
+def ensure_communications_schema():
+    """
+    Best-effort: add communications columns if missing.
+    """
+    if engine.dialect.name == "postgresql":
+        ddl = """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='communications' AND column_name='student_id') THEN
+                ALTER TABLE communications ADD COLUMN student_id INTEGER REFERENCES students(id) ON DELETE SET NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='communications' AND column_name='sender_name') THEN
+                ALTER TABLE communications ADD COLUMN sender_name VARCHAR(100);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='communications' AND column_name='sender_role') THEN
+                ALTER TABLE communications ADD COLUMN sender_role VARCHAR(50);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='communications' AND column_name='recipient') THEN
+                ALTER TABLE communications ADD COLUMN recipient VARCHAR(100);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='communications' AND column_name='subject') THEN
+                ALTER TABLE communications ADD COLUMN subject VARCHAR(150);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='communications' AND column_name='message_body') THEN
+                ALTER TABLE communications ADD COLUMN message_body TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='communications' AND column_name='created_at') THEN
+                ALTER TABLE communications ADD COLUMN created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW();
+            END IF;
+        END $$;
+        """
+    else:
+        ddls = [
+            "ALTER TABLE communications ADD COLUMN student_id INTEGER;",
+            "ALTER TABLE communications ADD COLUMN sender_name VARCHAR(100);",
+            "ALTER TABLE communications ADD COLUMN sender_role VARCHAR(50);",
+            "ALTER TABLE communications ADD COLUMN recipient VARCHAR(100);",
+            "ALTER TABLE communications ADD COLUMN subject VARCHAR(150);",
+            "ALTER TABLE communications ADD COLUMN message_body TEXT;",
+            "ALTER TABLE communications ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;",
+        ]
+    try:
+        with engine.begin() as conn:
+            if engine.dialect.name == "postgresql":
+                conn.execute(text(ddl))
+            else:
+                for stmt in ddls:
+                    try:
+                        conn.execute(text(stmt))
+                    except Exception:
+                        pass
+    except Exception as exc:
+        logging.warning("ensure_communications_schema failed: %s", exc)
+
+
+ensure_communications_schema()
 
 
 def ensure_schedule_schema():
@@ -1122,6 +1180,15 @@ class BehaviorReport(Base):
 class CommunicationMessage(Base):
     __tablename__ = "communications"
     id = Column(Integer, primary_key=True, autoincrement=True)
+    student_id = Column(Integer, ForeignKey("students.id"))
+    sender_name = Column(String(100), nullable=False)
+    sender_role = Column(String(50), nullable=False)
+    recipient = Column(String(100))
+    subject = Column(String(150), nullable=False)
+    message_body = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    student = relationship("Student")
 
 
 class Room(Base):
@@ -1145,15 +1212,6 @@ class ScheduleEntry(Base):
     end_time = Column(String(5), nullable=False)    # HH:MM
     notes = Column(String(200))
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    student_id = Column(Integer, ForeignKey("students.id"))
-    sender_name = Column(String(100), nullable=False)
-    sender_role = Column(String(50), nullable=False)
-    recipient = Column(String(100), nullable=True)
-    subject = Column(String(150), nullable=False)
-    message_body = Column(Text, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-
-    student = relationship("Student")
 
 
 class Subject(Base):
