@@ -1076,6 +1076,7 @@
                         <td>${s.date_of_birth ? `DOB: ${s.date_of_birth}` : "-"}</td>
                         <td style="display:flex; gap:8px; flex-wrap:wrap;">
                           <button data-id="${s.id}" class="print-report" style="padding:6px 10px;">Report PDF</button>
+                          <button data-id="${s.id}" class="print-schedule" style="padding:6px 10px;">Schedule PDF</button>
                           <button data-id="${s.id}" class="delete-student" style="padding:6px 10px;">Delete</button>
                         </td>`;
         tbody.appendChild(tr);
@@ -1100,6 +1101,9 @@
       });
       document.querySelectorAll(".print-report").forEach(btn => {
         btn.onclick = () => downloadStudentReport(Number(btn.dataset.id));
+      });
+      document.querySelectorAll(".print-schedule").forEach(btn => {
+        btn.onclick = () => downloadStudentSchedule(Number(btn.dataset.id));
       });
 
       // admin students table
@@ -1919,6 +1923,7 @@
     }
 
     const classTimeSlots = ["08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00"];
+    const classDays = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
     function buildTeacherSchedulePreview() {
       if (!currentUser || currentUser.role !== "Teacher") return [];
@@ -1977,6 +1982,75 @@
         label.style.display = "inline";
         val.textContent = `${next.time} — ${next.subject} (${next.section})`;
       }
+    }
+
+    function parseGradeNumberClient(gradeStr) {
+      if (!gradeStr) return null;
+      const m = String(gradeStr).match(/(\d{1,2})/);
+      return m ? Number(m[1]) : null;
+    }
+
+    function subjectsForStudent(stu) {
+      const gnum = parseGradeNumberClient(stu.grade_level);
+      const band = classifyGradeLevel(stu.grade_level);
+      const section = sectionsCache.find(sec => sec.id === stu.section_id);
+      const track = section?.track || null;
+      return subjectsCache.filter(sub => {
+        if (sub.level_band && band && sub.level_band !== band) return false;
+        if (sub.grade_min && gnum && sub.grade_min > gnum) return false;
+        if (sub.grade_max && gnum && sub.grade_max < gnum) return false;
+        if (sub.track && track && sub.track !== track) return false;
+        return true;
+      });
+    }
+
+    function buildScheduleEntries(stu) {
+      const subs = subjectsForStudent(stu);
+      const entries = [];
+      let idx = 0;
+      subs.forEach(sub => {
+        const day = classDays[idx % classDays.length];
+        const time = classTimeSlots[idx % classTimeSlots.length];
+        entries.push({ day, time, subject: sub.name, teacher: sub.teacher_name || "" });
+        idx++;
+      });
+      return entries;
+    }
+
+    function downloadStudentSchedule(studentId) {
+      const stu = studentsCache.find(s => s.id === studentId);
+      if (!stu) { showToast("Student not found", "error"); return; }
+      const entries = buildScheduleEntries(stu);
+      const win = window.open("", "_blank");
+      if (!win) return;
+      const rows = (entries.length
+        ? entries.map(e => `<tr><td>${e.day}</td><td>${e.time}</td><td>${e.subject}</td><td>${e.teacher || "-"}</td></tr>`).join("")
+        : `<tr><td colspan="4" style="text-align:center;">No subjects</td></tr>`);
+      const htmlParts = [
+        "<html>",
+        "<head>",
+        `<title>Schedule - ${stu.first_name} ${stu.last_name}</title>`,
+        "<style>",
+        "body { font-family: Arial, sans-serif; padding: 24px; color: #111; }",
+        "h2 { margin: 0 0 12px; }",
+        "table { width: 100%; border-collapse: collapse; margin-top: 12px; }",
+        "th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }",
+        "th { background: #f3f4f6; }",
+        "</style>",
+        "</head>",
+        "<body>",
+        "<h2>Class Schedule</h2>",
+        `<div style="margin-bottom:8px;">Student: <strong>${stu.first_name} ${stu.last_name}</strong>${stu.grade_level ? " • Grade " + stu.grade_level : ""}</div>`,
+        "<table>",
+        "<thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Teacher</th></tr></thead>",
+        `<tbody>${rows}</tbody>`,
+        "</table>",
+        "<script>window.print();<\\/script>",
+        "</body>",
+        "</html>"
+      ];
+      win.document.write(htmlParts.join(""));
+      win.document.close();
     }
 
     async function updateAttendanceStatus(id, status) {
