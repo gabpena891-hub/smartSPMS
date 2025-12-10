@@ -1379,6 +1379,14 @@ def create_student():
         return error_response(500, "Database connection failed", str(exc))
     session = session_or_none
     try:
+        existing = session.query(Student).filter_by(student_number=data["student_number"].strip()).first()
+        if existing:
+            full = f"{existing.first_name} {existing.last_name}".strip()
+            return error_response(
+                409,
+                "student_number must be unique",
+                f"Student number already used by {full} (id {existing.id}). Edit the existing record or choose a new number.",
+            )
         section_obj = None
         section_id = data.get("section_id")
         if section_id:
@@ -1464,6 +1472,7 @@ def delete_student(student_id: int):
         if not student:
             return error_response(404, "Student not found")
         # Clean up dependent records to satisfy FK constraints
+        session.query(StudentSubject).filter_by(student_id=student_id).delete(synchronize_session=False)
         session.query(Grade).filter_by(student_id=student_id).delete(synchronize_session=False)
         session.query(Attendance).filter_by(student_id=student_id).delete(synchronize_session=False)
         session.query(BehaviorReport).filter_by(student_id=student_id).delete(synchronize_session=False)
