@@ -2892,6 +2892,8 @@
           body: JSON.stringify({ section_id: secId, allow_saturday: allowSat })
         });
         status.textContent = `Created ${res.created.length} blocks${res.failed.length ? `, failed ${res.failed.length}` : ""}`;
+        const schedSel = document.getElementById("schedule-section");
+        if (schedSel) schedSel.value = String(secId);
         await loadSectionSchedule();
       } catch (ex) {
         if (status) status.textContent = ex.message;
@@ -2921,7 +2923,7 @@
         showToast("Select a section.", "error");
         return;
       }
-      const url = `/schedule/pdf?section_id=${secId}`;
+      const url = `${API_BASE}/schedule/pdf?section_id=${secId}`;
       const a = document.createElement("a");
       a.href = url;
       a.download = "";
@@ -3015,7 +3017,7 @@
           btn2.style.marginLeft = "8px";
           card.appendChild(btn2);
           btn2.addEventListener("click", () => {
-            const url = `/schedule/pdf?teacher_id=${currentUser.id}`;
+            const url = `${API_BASE}/schedule/pdf?teacher_id=${currentUser.id}`;
             const a = document.createElement("a");
             a.href = url;
             a.download = "";
