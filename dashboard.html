@@ -41,6 +41,8 @@
       display: flex;
       min-height: 100vh;
       overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
     }
 
     /* Sidebar Styling */
@@ -395,6 +397,7 @@
         z-index: 45;
         display: none;
         backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
       }
       #sidebar-overlay.active { display: block; }
     }
@@ -435,6 +438,7 @@
       inset: 0;
       background: rgba(10, 15, 26, 0.9);
       backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       z-index: 200;
       display: flex;
       align-items: center;
@@ -470,7 +474,7 @@
       </svg>
       <span>SPMS</span>
     </div>
-    <button onclick="toggleSidebar()" style="padding:8px; background:transparent;">
+    <button onclick="toggleSidebar()" style="padding:8px; background:transparent;" aria-label="Toggle navigation" title="Toggle navigation">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="3" y1="12" x2="21" y2="12"></line>
         <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -1045,12 +1049,16 @@
       const selectAtt = document.getElementById("attendance-student");
       const selectTrend = document.getElementById("trend-student");
       const selectReport = document.getElementById("report-student");
-      [selectGrade, selectAtt, selectTrend].forEach(sel => sel.innerHTML = "");
+      const studentSelects = [selectGrade, selectAtt, selectTrend].filter(Boolean);
+      if (!tbody) return;
+      if (studentSelects.length) {
+        studentSelects.forEach(sel => sel.innerHTML = "");
+      }
       if (selectReport) selectReport.innerHTML = "";
       const defaultOption = (text) => { const o = document.createElement("option"); o.value = ""; o.textContent = text; o.disabled = true; o.selected = true; return o; };
-      selectGrade.appendChild(defaultOption("Select student"));
-      selectAtt.appendChild(defaultOption("Select student"));
-      selectTrend.appendChild(defaultOption("Select student"));
+      if (studentSelects.length) {
+        studentSelects.forEach(sel => sel.appendChild(defaultOption("Select student")));
+      }
       if (selectReport) selectReport.appendChild(defaultOption("Select student"));
       tbody.innerHTML = "";
       const gradeSectionFilter = Number(document.getElementById("grade-section")?.value) || null;
@@ -1070,7 +1078,7 @@
         const opt = document.createElement("option");
         opt.value = s.id;
         opt.textContent = `${s.first_name} ${s.last_name}${s.grade_level ? " (G" + s.grade_level + ")" : ""}`;
-        [selectGrade, selectAtt, selectTrend].forEach(sel => sel.appendChild(opt.cloneNode(true)));
+        if (studentSelects.length) studentSelects.forEach(sel => sel.appendChild(opt.cloneNode(true)));
         if (selectReport) selectReport.appendChild(opt.cloneNode(true));
       });
       // wire delete buttons
@@ -2584,10 +2592,32 @@
       }
     }
 
+    function ensureAccessibilityLabels() {
+      document.querySelectorAll("select").forEach(sel => {
+        if (!sel.getAttribute("aria-label") && !sel.getAttribute("title")) {
+          const label = sel.getAttribute("placeholder") || sel.getAttribute("name") || sel.id || "Select";
+          sel.setAttribute("aria-label", label);
+          sel.setAttribute("title", label);
+        }
+      });
+      document.querySelectorAll("button").forEach(btn => {
+        const hasText = (btn.textContent || "").trim().length > 0;
+        if (!hasText && !btn.getAttribute("aria-label")) {
+          const label = btn.getAttribute("title") || btn.dataset.label || btn.dataset.action || btn.id || "Button";
+          btn.setAttribute("aria-label", label);
+        }
+        if (!btn.getAttribute("title")) {
+          const label = btn.getAttribute("aria-label") || (hasText ? btn.textContent.trim() : "");
+          if (label) btn.setAttribute("title", label);
+        }
+      });
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
       const user = ensureUser();
       if (!user) return;
 
+      ensureAccessibilityLabels();
       setTodayAttendanceDate();
       applyRoleVisibility(user.role);
 
