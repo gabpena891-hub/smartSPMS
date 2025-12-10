@@ -286,7 +286,12 @@
       transition: border 0.15s, box-shadow 0.15s;
       width: 100%;
     }
-    input::placeholder { color: #6b7280; }
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--muted);
+      opacity: 0.9;
+      letter-spacing: 0.01em;
+    }
     input:focus, select:focus, textarea:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
