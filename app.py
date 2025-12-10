@@ -3,6 +3,7 @@ import logging
 import re
 import io
 from datetime import date, datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from flask import Flask, jsonify, request, send_from_directory, abort
 from flask_cors import CORS
@@ -36,6 +37,26 @@ def init_db():
     except Exception as exc:
         logging.warning("DB init failed: %s", exc)
         return False, str(exc)
+
+
+def hash_password(raw: str):
+    if not raw:
+        return None
+    return generate_password_hash(raw)
+
+
+def verify_password(stored: str, provided: str) -> bool:
+    """
+    Supports legacy plaintext (stored == provided) and hashed (Werkzeug).
+    """
+    if not stored or not provided:
+        return False
+    if stored == provided:
+        return True
+    try:
+        return check_password_hash(stored, provided)
+    except Exception:
+        return False
 
 
 # Ensure tables exist (idempotent; safe for first run on Render/sqlite)
@@ -309,7 +330,7 @@ def admin_seed():
             return jsonify({"message": "Admin already exists"})
         user = User(
             username=username,
-            password_hash=password,
+            password_hash=hash_password(password),
             role="Admin",
             full_name=full_name,
             approved=1,
@@ -1788,12 +1809,8 @@ def login():
     session = session_or_none
 
     try:
-        user = (
-            session.query(User)
-            .filter(User.username == username, User.password_hash == password)
-            .first()
-        )
-        if not user:
+        user = session.query(User).filter(User.username == username).first()
+        if not user or not verify_password(user.password_hash, password):
             return error_response(401, "Invalid credentials")
         if user.role == "Teacher" and not user.approved:
             return error_response(403, "Account pending admin approval")
@@ -2388,6 +2405,8 @@ def create_user():
         return error_response(400, f"Missing fields: {', '.join(missing)}")
     if data["role"] not in ("Admin", "Teacher", "Parent"):
         return error_response(400, "role must be Admin, Teacher, or Parent")
+    if len(data.get("password", "")) < 8:
+        return error_response(400, "Password must be at least 8 characters")
 
     session_or_none = get_session()
     if isinstance(session_or_none, tuple):
@@ -2400,7 +2419,7 @@ def create_user():
             return error_response(409, "Username already exists")
         user = User(
             username=data["username"],
-            password_hash=data["password"],  # plaintext for demo
+            password_hash=hash_password(data["password"]),
             role=data["role"],
             full_name=data["full_name"],
             approved=1,
@@ -2440,7 +2459,9 @@ def update_user(user_id: int):
         if "full_name" in data and data["full_name"]:
             user.full_name = data["full_name"]
         if "password" in data and data["password"]:
-            user.password_hash = data["password"]  # plaintext for demo
+            if len(data["password"]) < 8:
+                return error_response(400, "Password must be at least 8 characters")
+            user.password_hash = hash_password(data["password"])
         if "approved" in data:
             user.approved = 1 if data["approved"] else 0
         if "teacher_band" in data:
