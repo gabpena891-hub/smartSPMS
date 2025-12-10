@@ -1121,7 +1121,7 @@
       if (currentUser?.role === "Teacher" && teacherBand) headers["X-Teacher-Band"] = teacherBand;
       if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
       if (currentUser?.full_name) headers["X-User-Name"] = currentUser.full_name;
-      
+
       toggleLoading(true);
       try {
       const res = await fetch(`${API_BASE}${path}`, {
@@ -1141,6 +1141,15 @@
       } finally {
         toggleLoading(false);
       }
+    }
+
+    function buildAuthHeaders() {
+      const headers = {};
+      if (currentUser?.role) headers["X-User-Role"] = currentUser.role;
+      if (currentUser?.role === "Teacher" && teacherBand) headers["X-Teacher-Band"] = teacherBand;
+      if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
+      if (currentUser?.full_name) headers["X-User-Name"] = currentUser.full_name;
+      return headers;
     }
 
     async function loadDashboard() {
@@ -3005,12 +3014,20 @@
         return;
       }
       const url = `${API_BASE}/schedule/pdf?section_id=${secId}`;
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      fetch(url, { headers: buildAuthHeaders() })
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to download PDF");
+          return res.blob();
+        })
+        .then(blob => {
+          const dl = document.createElement("a");
+          dl.href = URL.createObjectURL(blob);
+          dl.download = "";
+          document.body.appendChild(dl);
+          dl.click();
+          dl.remove();
+        })
+        .catch(err => showToast(err.message || "Download failed", "error"));
     }
 
     function renderScheduleToWindow(rows, title) {
@@ -3099,12 +3116,20 @@
           card.appendChild(btn2);
           btn2.addEventListener("click", () => {
             const url = `${API_BASE}/schedule/pdf?teacher_id=${currentUser.id}`;
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "";
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            fetch(url, { headers: buildAuthHeaders() })
+              .then(res => {
+                if (!res.ok) throw new Error("Failed to download PDF");
+                return res.blob();
+              })
+              .then(blob => {
+                const dl = document.createElement("a");
+                dl.href = URL.createObjectURL(blob);
+                dl.download = "";
+                document.body.appendChild(dl);
+                dl.click();
+                dl.remove();
+              })
+              .catch(err => showToast(err.message || "Download failed", "error"));
           });
         }
       } catch (ex) {
