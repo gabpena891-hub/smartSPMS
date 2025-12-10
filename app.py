@@ -405,51 +405,52 @@ def seed_subjects_data(session):
                 )
             )
 
-    # Group A: JHS Languages, AP, EsP (WW=0.30, PT=0.50, QA=0.20) — all JHS grades
-    add_subjects(
-        ["Filipino 7", "English 7", "Araling Panlipunan 7", "Edukasyon sa Pagpapakatao 7"],
-        "JHS",
-        "Core",
-        0.30,
-        0.50,
-        0.20,
-        7,
-        10,
-    )
-
-    # Group B: JHS Math & Science (WW=0.40, PT=0.40, QA=0.20) — scoped per grade
-    add_subjects(
-        ["Mathematics 7", "Science 7"],
-        "JHS",
-        "Core",
-        0.40,
-        0.40,
-        0.20,
-        7,
-        9,
-    )
-    add_subjects(
-        ["Mathematics 10", "Science 10"],
-        "JHS",
-        "Core",
-        0.40,
-        0.40,
-        0.20,
-        10,
-        10,
-    )
-
-    # Group C: JHS MAPEH/TLE (WW=0.20, PT=0.60, QA=0.20) — all JHS grades
-    add_subjects(
-        ["MAPEH 7", "TLE 7"],
-        "JHS",
-        "Core",
-        0.20,
-        0.60,
-        0.20,
-        7,
-        10,
-    )
+    # JHS per-grade subjects (DepEd-aligned naming per grade 7-10)
+    for g in range(7, 11):
+        # Languages / AP / EsP
+        add_subjects(
+            [
+                f"Filipino {g}",
+                f"English {g}",
+                f"Araling Panlipunan {g}",
+                f"Edukasyon sa Pagpapakatao {g}",
+            ],
+            "JHS",
+            "Core",
+            0.30,
+            0.50,
+            0.20,
+            g,
+            g,
+        )
+        # Math & Science
+        add_subjects(
+            [
+                f"Mathematics {g}",
+                f"Science {g}",
+            ],
+            "JHS",
+            "Core",
+            0.40,
+            0.40,
+            0.20,
+            g,
+            g,
+        )
+        # MAPEH & TLE
+        add_subjects(
+            [
+                f"MAPEH {g}",
+                f"TLE {g}",
+            ],
+            "JHS",
+            "Core",
+            0.20,
+            0.60,
+            0.20,
+            g,
+            g,
+        )
 
     # Group D: SHS Core (WW=0.25, PT=0.50, QA=0.25)
     add_subjects(
@@ -1404,17 +1405,39 @@ def auto_assign_subjects_for_student(session, student: "Student", section: "Sect
 
 # Approximate weekly hours per subject for scheduling (DepEd-aligned defaults).
 SUBJECT_WEEKLY_HOURS = {
-    # JHS cores
+    # JHS cores per grade
     "Filipino 7": 5,
+    "Filipino 8": 5,
+    "Filipino 9": 5,
+    "Filipino 10": 5,
     "English 7": 5,
+    "English 8": 5,
+    "English 9": 5,
+    "English 10": 5,
     "Araling Panlipunan 7": 4,
+    "Araling Panlipunan 8": 4,
+    "Araling Panlipunan 9": 4,
+    "Araling Panlipunan 10": 4,
     "Edukasyon sa Pagpapakatao 7": 1,
+    "Edukasyon sa Pagpapakatao 8": 1,
+    "Edukasyon sa Pagpapakatao 9": 1,
+    "Edukasyon sa Pagpapakatao 10": 1,
     "Mathematics 7": 5,
-    "Science 7": 5,
+    "Mathematics 8": 5,
+    "Mathematics 9": 5,
     "Mathematics 10": 5,
+    "Science 7": 5,
+    "Science 8": 5,
+    "Science 9": 5,
     "Science 10": 5,
     "MAPEH 7": 4,
+    "MAPEH 8": 4,
+    "MAPEH 9": 4,
+    "MAPEH 10": 4,
     "TLE 7": 4,
+    "TLE 8": 4,
+    "TLE 9": 4,
+    "TLE 10": 4,
     # SHS Core (3h default)
     "Oral Communication": 3,
     "Reading and Writing": 3,
@@ -1617,6 +1640,23 @@ def record_block(entries, day, start, end, key):
     entries.setdefault(day, []).append((start, end, key))
 
 
+def format_time_12h_str(t: str) -> str:
+    """Convert 'HH:MM' (24h) to 'H:MM AM/PM' for readability."""
+    if not t or ":" not in t:
+        return t or ""
+    try:
+        h_str, m_str = t.split(":")
+        h = int(h_str)
+        m = m_str
+        ampm = "PM" if h >= 12 else "AM"
+        h = h % 12
+        if h == 0:
+            h = 12
+        return f"{h}:{m} {ampm}"
+    except Exception:
+        return t
+
+
 def pdf_escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
@@ -1644,7 +1684,7 @@ def make_schedule_pdf(entries, title="Schedule"):
         rows.append(
             [
                 day_name_short(r.get("day_of_week")),
-                f"{r.get('start_time','')} - {r.get('end_time','')}",
+                f"{format_time_12h_str(r.get('start_time',''))} - {format_time_12h_str(r.get('end_time',''))}",
                 r.get("section_name", "") or "-",
                 r.get("subject_name", "") or "-",
                 r.get("teacher_name", "") or "-",

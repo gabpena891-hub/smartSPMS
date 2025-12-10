@@ -2832,6 +2832,18 @@
       return ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][n] || n;
     }
 
+    function formatTime12h(t) {
+      if (!t || typeof t !== "string") return t || "";
+      const [hStr, mStr] = t.split(":");
+      let h = parseInt(hStr, 10);
+      const m = mStr || "00";
+      if (Number.isNaN(h)) return t;
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12;
+      if (h === 0) h = 12;
+      return `${h}:${m} ${ampm}`;
+    }
+
     async function loadSectionSchedule() {
       const secId = Number(document.getElementById("schedule-section")?.value || document.getElementById("assign-section")?.value);
       const body = document.getElementById("section-schedule-body");
@@ -2853,7 +2865,7 @@
         rows.forEach(r => {
           const tr = document.createElement("tr");
           tr.innerHTML = `<td>${dayName(r.day_of_week)}</td>
-                          <td>${r.start_time} - ${r.end_time}</td>
+                          <td>${formatTime12h(r.start_time)} - ${formatTime12h(r.end_time)}</td>
                           <td>${r.subject_name || "-"}</td>
                           <td>${r.teacher_name || "-"}</td>
                           <td>${r.room_name || "-"}</td>`;
@@ -2931,7 +2943,7 @@
       rows
         .sort((a,b) => (a.day_of_week - b.day_of_week) || a.start_time.localeCompare(b.start_time))
         .forEach(r => {
-          html += `<tr><td>${dayName(r.day_of_week)}</td><td>${r.start_time} - ${r.end_time}</td><td>${r.section_name || "-"}</td><td>${r.subject_name || "-"}</td><td>${r.teacher_name || "-"}</td><td>${r.room_name || "-"}</td></tr>`;
+          html += `<tr><td>${dayName(r.day_of_week)}</td><td>${formatTime12h(r.start_time)} - ${formatTime12h(r.end_time)}</td><td>${r.section_name || "-"}</td><td>${r.subject_name || "-"}</td><td>${r.teacher_name || "-"}</td><td>${r.room_name || "-"}</td></tr>`;
         });
       html += `</tbody></table>`;
       win.document.write(`<html><head><title>${title}</title></head><body>${html}</body></html>`);
@@ -2978,7 +2990,7 @@
         rows.forEach(r => {
           const tr = document.createElement("tr");
           tr.innerHTML = `<td>${dayName(r.day_of_week)}</td>
-                          <td>${r.start_time} - ${r.end_time}</td>
+                          <td>${formatTime12h(r.start_time)} - ${formatTime12h(r.end_time)}</td>
                           <td>${r.section_name || "-"}</td>
                           <td>${r.subject_name || "-"}</td>
                           <td>${r.room_name || "-"}</td>`;
