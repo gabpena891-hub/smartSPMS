@@ -1405,11 +1405,11 @@ def auto_assign_subjects_for_student(session, student: "Student", section: "Sect
 
 # Approximate weekly hours per subject for scheduling (DepEd-aligned defaults).
 SUBJECT_WEEKLY_HOURS = {
-    # JHS cores per grade
-    "Filipino 7": 5,
-    "Filipino 8": 5,
-    "Filipino 9": 5,
-    "Filipino 10": 5,
+    # JHS cores per grade (typical DepEd time allotment: 300 mins -> 5h; 250 mins -> ~4h)
+    "Filipino 7": 4,
+    "Filipino 8": 4,
+    "Filipino 9": 4,
+    "Filipino 10": 4,
     "English 7": 5,
     "English 8": 5,
     "English 9": 5,
@@ -1418,10 +1418,10 @@ SUBJECT_WEEKLY_HOURS = {
     "Araling Panlipunan 8": 4,
     "Araling Panlipunan 9": 4,
     "Araling Panlipunan 10": 4,
-    "Edukasyon sa Pagpapakatao 7": 1,
-    "Edukasyon sa Pagpapakatao 8": 1,
-    "Edukasyon sa Pagpapakatao 9": 1,
-    "Edukasyon sa Pagpapakatao 10": 1,
+    "Edukasyon sa Pagpapakatao 7": 4,
+    "Edukasyon sa Pagpapakatao 8": 4,
+    "Edukasyon sa Pagpapakatao 9": 4,
+    "Edukasyon sa Pagpapakatao 10": 4,
     "Mathematics 7": 5,
     "Mathematics 8": 5,
     "Mathematics 9": 5,
@@ -1434,10 +1434,10 @@ SUBJECT_WEEKLY_HOURS = {
     "MAPEH 8": 4,
     "MAPEH 9": 4,
     "MAPEH 10": 4,
-    "TLE 7": 4,
-    "TLE 8": 4,
-    "TLE 9": 4,
-    "TLE 10": 4,
+    "TLE 7": 5,
+    "TLE 8": 5,
+    "TLE 9": 5,
+    "TLE 10": 5,
     # SHS Core (3h default)
     "Oral Communication": 3,
     "Reading and Writing": 3,
