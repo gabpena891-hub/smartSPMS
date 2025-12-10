@@ -222,7 +222,7 @@ def seed_subjects_data(session):
                 )
             )
 
-    # Group A: JHS Languages, AP, EsP (WW=0.30, PT=0.50, QA=0.20)
+    # Group A: JHS Languages, AP, EsP (WW=0.30, PT=0.50, QA=0.20) — all JHS grades
     add_subjects(
         ["Filipino 7", "English 7", "Araling Panlipunan 7", "Edukasyon sa Pagpapakatao 7"],
         "JHS",
@@ -234,19 +234,29 @@ def seed_subjects_data(session):
         10,
     )
 
-    # Group B: JHS Math & Science (WW=0.40, PT=0.40, QA=0.20)
+    # Group B: JHS Math & Science (WW=0.40, PT=0.40, QA=0.20) — scoped per grade
     add_subjects(
-        ["Mathematics 7", "Science 7", "Mathematics 10", "Science 10"],
+        ["Mathematics 7", "Science 7"],
         "JHS",
         "Core",
         0.40,
         0.40,
         0.20,
         7,
+        9,
+    )
+    add_subjects(
+        ["Mathematics 10", "Science 10"],
+        "JHS",
+        "Core",
+        0.40,
+        0.40,
+        0.20,
+        10,
         10,
     )
 
-    # Group C: JHS MAPEH/TLE (WW=0.20, PT=0.60, QA=0.20)
+    # Group C: JHS MAPEH/TLE (WW=0.20, PT=0.60, QA=0.20) — all JHS grades
     add_subjects(
         ["MAPEH 7", "TLE 7"],
         "JHS",
@@ -738,13 +748,23 @@ def admin_system_repair():
                 10,
             )
             add_subjects(
-                ["Mathematics 7", "Science 7", "Mathematics 10", "Science 10"],
+                ["Mathematics 7", "Science 7"],
                 "JHS",
                 "Core",
                 0.40,
                 0.40,
                 0.20,
                 7,
+                9,
+            )
+            add_subjects(
+                ["Mathematics 10", "Science 10"],
+                "JHS",
+                "Core",
+                0.40,
+                0.40,
+                0.20,
+                10,
                 10,
             )
             add_subjects(
