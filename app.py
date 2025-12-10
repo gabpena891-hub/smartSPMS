@@ -140,6 +140,26 @@ ensure_section_schema()
 ensure_attendance_schema()
  
 
+def ensure_subjects_catalog():
+    """Seed default subjects if none exist to keep scheduling/auto-assign working."""
+    session_or_none = get_session()
+    if isinstance(session_or_none, tuple):
+        return
+    session = session_or_none
+    try:
+        total = session.query(Subject).count()
+        if total == 0:
+            seed_subjects_data(session)
+            session.commit()
+    except Exception as exc:
+        logging.warning("ensure_subjects_catalog failed: %s", exc)
+    finally:
+        session.close()
+
+
+ensure_subjects_catalog()
+ 
+
 def ensure_communications_schema():
     """
     Best-effort: add communications columns if missing.
