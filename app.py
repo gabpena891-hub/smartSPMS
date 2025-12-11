@@ -3372,7 +3372,7 @@ def list_attendance():
                 if st and parse_band_from_grade(st.grade_level) == band:
                     records.append(r)
         else:
-        records = query.order_by(Attendance.attendance_date.desc()).all()
+            records = query.order_by(Attendance.attendance_date.desc()).all()
         return jsonify(
             [
                 {
