@@ -1284,36 +1284,36 @@ if engine.dialect.name == "mssql":
     try:
         with engine.connect() as conn:
             # student_number
-        col_exists = conn.execute(
-            text(
-                """
-                SELECT 1 FROM sys.columns 
-                WHERE Name = N'student_number' 
-                                  AND Object_ID = Object_ID(N'students');
-                """
-            )
-        ).first()
-        if not col_exists:
-            conn.execute(
-                text("ALTER TABLE Students ADD student_number NVARCHAR(50) NULL UNIQUE;")
-            )
-            conn.commit()
+            col_exists = conn.execute(
+                text(
+                    """
+                    SELECT 1 FROM sys.columns 
+                    WHERE Name = N'student_number' 
+                                      AND Object_ID = Object_ID(N'students');
+                    """
+                )
+            ).first()
+            if not col_exists:
+                conn.execute(
+                    text("ALTER TABLE Students ADD student_number NVARCHAR(50) NULL UNIQUE;")
+                )
+                conn.commit()
 
             # middle_name
-        col_exists = conn.execute(
-            text(
-                """
-                SELECT 1 FROM sys.columns 
-                WHERE Name = N'middle_name' 
-                                  AND Object_ID = Object_ID(N'students');
-                """
-            )
-        ).first()
-        if not col_exists:
-            conn.execute(
-                text("ALTER TABLE Students ADD middle_name NVARCHAR(1) NULL;")
-            )
-            conn.commit()
+            col_exists = conn.execute(
+                text(
+                    """
+                    SELECT 1 FROM sys.columns 
+                    WHERE Name = N'middle_name' 
+                                      AND Object_ID = Object_ID(N'students');
+                    """
+                )
+            ).first()
+            if not col_exists:
+                conn.execute(
+                    text("ALTER TABLE Students ADD middle_name NVARCHAR(1) NULL;")
+                )
+                conn.commit()
 
             # approved
             col_exists = conn.execute(
