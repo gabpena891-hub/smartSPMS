@@ -59,12 +59,12 @@
 
     /* Sidebar Styling */
     aside {
-      background: var(--sidebar);
-      border-right: 1px solid var(--border);
-      padding: 24px 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--sidebar);
+      border-right: 1px solid var(--border-strong);
+      padding: 24px 18px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
       position: sticky;
       top: 0;
       height: 100vh;
@@ -74,19 +74,23 @@
       min-width: 260px;
       max-width: 260px;
       flex-shrink: 0;
-      z-index: 10;
-      box-shadow: var(--shadow-soft);
+      z-index: 12;
+      box-shadow: var(--shadow);
     }
     .brand { 
       font-size: 18px; 
-      font-weight: 700; 
+      font-weight: 800; 
       letter-spacing: -0.025em; 
       color: white; 
-      margin-bottom: 24px;
-      padding: 8px 12px;
+      margin-bottom: 18px;
+      padding: 10px 12px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
     }
     .brand::before {
       content: '';
@@ -104,32 +108,46 @@
       background: transparent;
       border: 1px solid transparent;
       text-align: left;
-      padding: 10px 14px;
-      border-radius: 10px;
+      padding: 11px 14px;
+      border-radius: 12px;
       cursor: pointer;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0;
-      transition: all 0.2s ease;
+      transition: all 0.18s ease;
       font-family: inherit;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      position: relative;
+      isolation: isolate;
+    }
+    nav button::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border-strong);
+      display: inline-flex;
+      flex-shrink: 0;
+      transition: background 0.2s ease, transform 0.2s ease;
     }
     nav button:hover {
       background: var(--surface);
       border-color: var(--border);
       color: var(--muted-strong);
     }
+    nav button:hover::before { background: var(--accent-2); transform: scale(1.05); }
     nav button.active {
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
       color: white;
       border-color: transparent;
       box-shadow: 0 14px 32px rgba(128, 91, 255, 0.24);
     }
+    nav button.active::before { background: white; }
     nav button[onclick="logout()"] {
       margin-top: auto;
       color: #f87171;
@@ -476,7 +494,7 @@
         left: 0;
         top: 0;
         bottom: 0;
-        width: 240px;
+        width: 260px;
         z-index: 50;
         transform: translateX(-100%);
         transition: transform 0.3s ease;
