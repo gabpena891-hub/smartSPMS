@@ -15,10 +15,10 @@
   <style>
     :root {
       --bg: #05070f;
-      --bg-elevated: radial-gradient(circle at 18% 12%, rgba(124,58,237,0.12), transparent 35%), radial-gradient(circle at 82% 8%, rgba(14,165,233,0.12), transparent 28%), linear-gradient(145deg, #040812 0%, #05070f 40%, #060915 100%);
+      --bg-elevated: linear-gradient(145deg, #05070f 0%, #060915 100%);
       --sidebar: #0a0f1d;
-      --card: rgba(14, 19, 34, 0.88);
-      --card-strong: rgba(18, 26, 44, 0.95);
+      --card: #0e1322;
+      --card-strong: #121a2c;
       --surface: rgba(255,255,255,0.02);
       --border: rgba(255, 255, 255, 0.08);
       --border-strong: rgba(255, 255, 255, 0.16);
@@ -26,14 +26,14 @@
       --accent-2: #22d3ee;
       --accent-3: #3b82f6;
       --accent-hover: #6f46ff;
-      --accent-soft: rgba(124, 58, 237, 0.16);
+      --accent-soft: rgba(124, 58, 237, 0.12);
       --muted: #9aa7c4;
       --muted-strong: #e6e9f5;
       --text: #eef2ff;
       --danger: #ef4444;
       --success: #10b981;
-      --shadow: 0 30px 70px rgba(0,0,0,0.45);
-      --shadow-soft: 0 16px 40px rgba(0,0,0,0.28);
+      --shadow: 0 14px 28px rgba(0,0,0,0.28);
+      --shadow-soft: 0 8px 18px rgba(0,0,0,0.22);
       --radius: 14px;
     }
     * { box-sizing: border-box; outline: none; }
@@ -44,7 +44,7 @@
     ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
 
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: auto; }
     body {
       margin: 0;
       font-family: "Inter", sans-serif;
@@ -61,7 +61,7 @@
 
     /* Sidebar Styling */
     aside {
-      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), var(--sidebar);
+      background: var(--sidebar);
       border-right: 1px solid var(--border-strong);
       padding: 26px 18px;
       display: flex;
@@ -78,7 +78,6 @@
       flex-shrink: 0;
       z-index: 12;
       box-shadow: var(--shadow);
-      backdrop-filter: blur(12px);
     }
     .brand { 
       font-size: 18px; 
@@ -86,14 +85,14 @@
       letter-spacing: -0.025em; 
       color: white; 
       margin-bottom: 18px;
-      padding: 12px 14px;
+      padding: 10px 12px;
       display: flex;
       align-items: center;
       gap: 12px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(34,211,238,0.08));
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
       border: 1px solid var(--border);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     }
     .brand::before {
       content: '';
@@ -143,7 +142,6 @@
       background: var(--surface);
       border-color: var(--border);
       color: var(--muted-strong);
-      transform: translateX(1px);
     }
     nav button:hover::before { background: var(--accent-2); transform: scale(1.05); }
     nav button.active {
@@ -176,7 +174,7 @@
       justify-content: space-between; 
       align-items: center; 
       margin-bottom: 28px; 
-      background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      background: rgba(255,255,255,0.02);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 14px 18px;
@@ -200,7 +198,7 @@
     /* Cards */
     .cards { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 28px; }
     .card {
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--card);
+      background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 20px;
@@ -208,7 +206,6 @@
       box-shadow: var(--shadow-soft);
       position: relative;
       overflow: hidden;
-      backdrop-filter: blur(8px);
     }
     .card::after {
       content: "";
@@ -290,7 +287,6 @@
       margin-top: 12px;
       background: var(--card);
       box-shadow: var(--shadow-soft);
-      backdrop-filter: blur(8px);
     }
     table {
       width: 100%;
@@ -331,20 +327,19 @@
       border-radius: var(--radius);
       border: 1px solid var(--border);
       box-shadow: var(--shadow-soft);
-      backdrop-filter: blur(6px);
     }
     
     input, select, textarea {
       padding: 12px 14px;
       border-radius: 12px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,0.03);
+      background: rgba(255,255,255,0.025);
       color: white;
       font-size: 13px;
       font-family: inherit;
       transition: border 0.15s, box-shadow 0.15s, background 0.15s;
       width: 100%;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      box-shadow: none;
     }
     input::placeholder,
     textarea::placeholder {
