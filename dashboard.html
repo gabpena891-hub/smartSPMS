@@ -592,6 +592,35 @@
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
+    /* Background paths (login aesthetic, non-React port) */
+    .bg-paths-host {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .bg-paths {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      color: #0f172a;
+      opacity: 0.7;
+      mix-blend-mode: screen;
+    }
+    .bg-paths svg {
+      width: 100%;
+      height: 100%;
+    }
+    @media (prefers-color-scheme: dark) {
+      .bg-paths { color: #ffffff; opacity: 0.65; }
+    }
+    @keyframes bg-path-flow {
+      0%   { stroke-dasharray: 0, 1200; stroke-dashoffset: 1200; opacity: 0.35; }
+      25%  { stroke-dasharray: 1200, 1200; stroke-dashoffset: 900; opacity: 0.55; }
+      50%  { stroke-dashoffset: 600; opacity: 0.42; }
+      75%  { stroke-dashoffset: 300; opacity: 0.6; }
+      100% { stroke-dasharray: 0, 1200; stroke-dashoffset: 1200; opacity: 0.35; }
+    }
+
     /* Loading Overlay */
     #loading-overlay {
       position: fixed;
@@ -1313,6 +1342,50 @@
         const label = (opt.textContent || "").toLowerCase();
         opt.hidden = !label.includes(q);
       });
+    }
+
+    // Non-React animated background paths for login-like areas
+    function mountBackgroundPaths(targetId, title) {
+      const host = document.getElementById(targetId);
+      if (!host || host.dataset.bgPaths === "1") return;
+      host.dataset.bgPaths = "1";
+      host.classList.add("bg-paths-host");
+
+      const wrap = document.createElement("div");
+      wrap.className = "bg-paths";
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 696 316");
+      svg.setAttribute("fill", "none");
+      svg.setAttribute("aria-hidden", "true");
+
+      const paths = [];
+      const makeSet = (position) => {
+        Array.from({ length: 36 }, (_, i) => {
+          const d = `M-${380 - i * 5 * position} -${189 + i * 6}C-${380 - i * 5 * position} -${189 + i * 6} -${312 - i * 5 * position} ${216 - i * 6} ${152 - i * 5 * position} ${343 - i * 6}C${616 - i * 5 * position} ${470 - i * 6} ${684 - i * 5 * position} ${875 - i * 6} ${684 - i * 5 * position} ${875 - i * 6}`;
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute("d", d);
+          path.setAttribute("stroke", "currentColor");
+          path.setAttribute("stroke-width", String(0.5 + i * 0.03));
+          path.setAttribute("stroke-opacity", String(0.1 + i * 0.03));
+          path.style.strokeDasharray = "1200 1200";
+          path.style.strokeDashoffset = "1200";
+          const duration = 20 + Math.random() * 10;
+          path.style.animation = `bg-path-flow ${duration}s linear infinite`;
+          paths.push(path);
+        });
+      };
+      makeSet(1);
+      makeSet(-1);
+      paths.forEach(p => svg.appendChild(p));
+      wrap.appendChild(svg);
+      host.prepend(wrap);
+
+      if (title) {
+        const sr = document.createElement("span");
+        sr.className = "sr-only";
+        sr.textContent = title;
+        host.prepend(sr);
+      }
     }
 
     async function fetchJSON(path, options = {}) {
@@ -3447,6 +3520,13 @@
       ensureAccessibilityLabels();
       setTodayAttendanceDate();
       applyRoleVisibility(user.role);
+
+      // Attach animated background to login-like shells if present
+      const loginTargets = ["login-container", "login-card", "login", "login-page", "auth-shell"];
+      const targetId = loginTargets.find(id => document.getElementById(id));
+      if (targetId) {
+        mountBackgroundPaths(targetId, "Background Paths");
+      }
 
       document.querySelectorAll("nav button[data-tab]").forEach(btn => {
         btn.addEventListener("click", () => switchTab(btn.dataset.tab));
